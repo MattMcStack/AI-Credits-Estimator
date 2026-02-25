@@ -309,7 +309,7 @@ export default function AICreditCalculatorPage() {
                     </td>
                     <td className="p-4 text-center align-top">
                       <div className="flex flex-col items-center">
-                        <input type="number" min={0} value={p.runs} onChange={(e) => updateProductRuns(index, Number(e.target.value) || 0)} className="run-input bg-white rounded-md px-3 py-1.5 w-24 border border-slate-300 text-center font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm" placeholder="0" />
+                        <input type="number" min={0} value={p.runs} onChange={(e) => updateProductRuns(index, Number(e.target.value) || 0)} onFocus={(e) => e.target.select()} className="run-input bg-white rounded-md px-3 py-1.5 w-24 border border-slate-300 text-center font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm" placeholder="0" />
                         <span className="text-[10px] text-slate-400 mt-1 block leading-none">{p.unitLabel}</span>
                       </div>
                     </td>
