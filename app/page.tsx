@@ -131,14 +131,26 @@ export default function AICreditCalculatorPage() {
     setSummaryModal(true);
   }, [totalCredits, volumeCredits, totalCost, totalUtilPercent, overageCredits, overageCost, remainingPool, products]);
 
-  const copySummary = useCallback(() => {
-    const el = document.createElement("div");
-    el.innerHTML = summaryHtml;
-    const text = el.innerText || el.textContent || "";
-    navigator.clipboard.writeText(text).then(() => {
+  const copySummary = useCallback(async () => {
+    const plainEl = document.createElement("div");
+    plainEl.innerHTML = summaryHtml;
+    const plainText = plainEl.innerText || plainEl.textContent || "";
+    const htmlForClipboard = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${summaryHtml}</body></html>`;
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([htmlForClipboard], { type: "text/html" }),
+          "text/plain": new Blob([plainText], { type: "text/plain" }),
+        }),
+      ]);
       setCopyButtonText("Copied!");
       setTimeout(() => setCopyButtonText("Copy to Clipboard"), 2000);
-    });
+    } catch {
+      navigator.clipboard.writeText(plainText).then(() => {
+        setCopyButtonText("Copied!");
+        setTimeout(() => setCopyButtonText("Copy to Clipboard"), 2000);
+      });
+    }
   }, [summaryHtml]);
 
   return (
