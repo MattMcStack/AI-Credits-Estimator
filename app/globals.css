@@ -38,3 +38,80 @@
   background: #cbd5e1;
   border-radius: 10px;
 }
+
+/* App failed (loaded outside Contentstack Dashboard) */
+.app-failed-container {
+  padding: 5rem 1.5rem;
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-failed-container > .app-component-container {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #fdf2c7;
+  border-radius: 0.5rem;
+}
+
+.app-failed-container .app-icon {
+  margin-right: 0.5rem;
+  color: #b36b34;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.app-failed-container .app-content {
+  display: flex;
+  align-items: flex-start;
+}
+
+.app-failed-container .app-content > h3 {
+  color: #b36b34;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.app-failed-container .app-text {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  color: #b36b34;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.app-failed-container .secondary-app-container {
+  display: flex;
+}
+
+.app-failed-container .secondary-app-container > button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background-color: #b36b34;
+  color: #ffffff;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: none;
+}
+
+.app-failed-container .secondary-app-container > button:hover {
+  background-color: #9a5a2b;
+}
+
+.app-failed-container .app-learn-more {
+  margin-right: 0.5rem;
+  margin-left: -0.125rem;
+  width: 1rem;
+  height: 1rem;
+}
