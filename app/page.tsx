@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 
 type Product = {
   id: string;
@@ -53,6 +53,9 @@ export default function AICreditCalculatorPage() {
   const [summaryModal, setSummaryModal] = useState(false);
   const [summaryHtml, setSummaryHtml] = useState("");
   const [copyButtonText, setCopyButtonText] = useState("Copy to Clipboard");
+  const [numberOfUsers, setNumberOfUsers] = useState(10);
+  /** `false` = current redesigned metrics; `true` = original four-card layout (Cost per Credit visible, etc.) */
+  const [showLegacyUi, setShowLegacyUi] = useState(false);
 
   const volumeCredits = useMemo(() => {
     return products.reduce((sum, p) => sum + p.runs * p.credits, 0);
@@ -64,6 +67,11 @@ export default function AICreditCalculatorPage() {
   const totalCost = subscriptionCost + overageCost;
   const totalUtilPercent = totalCredits > 0 ? (volumeCredits / totalCredits) * 100 : 0;
   const remainingPool = Math.max(0, totalCredits - volumeCredits);
+
+  const creditsPerUser = useMemo(() => {
+    if (!Number.isFinite(numberOfUsers) || numberOfUsers <= 0) return null;
+    return Math.floor(totalCredits / numberOfUsers);
+  }, [totalCredits, numberOfUsers]);
 
   const updateProductRuns = useCallback((index: number, runs: number) => {
     setProducts((prev) => {
@@ -83,6 +91,16 @@ export default function AICreditCalculatorPage() {
 
   const resetAllRuns = useCallback(() => {
     setProducts((prev) => prev.map((p) => ({ ...p, runs: 0 })));
+  }, []);
+
+  const onMonthlyPoolChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (digits === "") {
+      setTotalCredits(0);
+      return;
+    }
+    const n = Number.parseInt(digits, 10);
+    if (!Number.isNaN(n)) setTotalCredits(n);
   }, []);
 
   const generateSummary = useCallback(() => {
@@ -161,78 +179,196 @@ export default function AICreditCalculatorPage() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-800">AI Credit Sales Calculator</h1>
           <p className="text-slate-500 mt-2">Modeling consumption and overage forecasting based on volume of runs.</p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowLegacyUi((v) => !v)}
+            className="text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 rounded-md px-2.5 py-1 shadow-sm transition-colors"
+          >
+            {showLegacyUi ? "New View" : "Old View"}
+          </button>
           <span className="text-xs font-mono text-slate-400">v3.10.0 - Dynamic Max Thresholds</span>
         </div>
       </header>
 
-      {/* Top metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Monthly Credit Pool</label>
-            <input type="number" value={totalCredits} step={100000} onChange={(e) => setTotalCredits(Number(e.target.value) || 0)} className="text-2xl font-bold text-slate-800 w-full focus:outline-none" />
-          </div>
-          <div className="mt-4 space-y-1">
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Contracted Capacity</p>
-            <div className="h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Forecasted Consumption</label>
-            <span className="text-2xl font-bold text-slate-800">{volumeCredits.toLocaleString()}</span>
-          </div>
-          <div className="mt-4 space-y-1">
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
-            <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-              <span>Overage Credits:</span>
-              <span>+{overageCredits.toLocaleString()}</span>
+      {/* Top metrics — legacy vs redesigned */}
+      {showLegacyUi ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Monthly Credit Pool</label>
+              <input
+                type="number"
+                value={totalCredits}
+                step={100000}
+                onChange={(e) => setTotalCredits(Number(e.target.value) || 0)}
+                className="text-2xl font-bold text-slate-800 w-full focus:outline-none"
+              />
+            </div>
+            <div className="mt-4 space-y-1">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Contracted Capacity</p>
+              <div className="h-4" />
             </div>
           </div>
-        </div>
 
-        <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cost per Credit</label>
-            <div className="flex items-center">
-              <span className="text-xl font-semibold text-slate-400 mr-1">$</span>
-              <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} className="text-2xl font-bold text-slate-800 w-full focus:outline-none" />
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Forecasted Consumption</label>
+              <span className="text-2xl font-bold text-slate-800">{volumeCredits.toLocaleString()}</span>
+            </div>
+            <div className="mt-4 space-y-1">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
+              <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
+                <span>Overage Credits:</span>
+                <span>+{overageCredits.toLocaleString()}</span>
+              </div>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
-            <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Pool Unit Price</p>
-            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter">
-              <span className="text-slate-400">Overage Rate:</span>
-              <div className="flex items-center text-slate-800">
-                <span>$</span>
-                <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} className="bg-transparent text-right w-20 focus:outline-none font-bold" />
+
+          <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cost per Credit</label>
+              <div className="flex items-center">
+                <span className="text-xl font-semibold text-slate-400 mr-1">$</span>
+                <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} className="text-2xl font-bold text-slate-800 w-full focus:outline-none" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Pool Unit Price</p>
+              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter">
+                <span className="text-slate-400">Overage Rate:</span>
+                <div className="flex items-center text-slate-800">
+                  <span>$</span>
+                  <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} className="bg-transparent text-right w-20 focus:outline-none font-bold" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white calculator-metric-card">
+            <div>
+              <label className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">Total Billing Forecast</label>
+              <div className="flex items-center">
+                <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
+                <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            <div className="mt-4 space-y-1">
+              <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
+                <span className="opacity-70">Subscription:</span>
+                <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
+                <span>Est. Overage Billing:</span>
+                <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white calculator-metric-card">
-          <div>
-            <label className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">Total Billing Forecast</label>
-            <div className="flex items-center">
-              <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
-              <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div>
+              <label htmlFor="monthly-credit-pool" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Monthly Credit Pool
+              </label>
+              <input
+                id="monthly-credit-pool"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={totalCredits.toLocaleString("en-US")}
+                onChange={onMonthlyPoolChange}
+                className="text-2xl font-bold text-slate-800 w-full focus:outline-none tabular-nums"
+              />
+            </div>
+            <div className="mt-4 space-y-1">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Contracted Capacity</p>
+              <div className="h-4" />
             </div>
           </div>
-          <div className="mt-4 space-y-1">
-            <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
-              <span className="opacity-70">Subscription:</span>
-              <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Forecasted Consumption</label>
+              <span className="text-2xl font-bold text-slate-800">{volumeCredits.toLocaleString()}</span>
             </div>
-            <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-              <span>Est. Overage Billing:</span>
-              <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <div className="mt-4 space-y-1">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
+              <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
+                <span>Overage Credits:</span>
+                <span>+{overageCredits.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hidden from UI: pricing inputs still drive subscription/overage math */}
+          <div className="hidden" aria-hidden="true">
+            <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cost per Credit</label>
+                <div className="flex items-center">
+                  <span className="text-xl font-semibold text-slate-400 mr-1">$</span>
+                  <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} className="text-2xl font-bold text-slate-800 w-full focus:outline-none" />
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
+                <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Pool Unit Price</p>
+                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter">
+                  <span className="text-slate-400">Overage Rate:</span>
+                  <div className="flex items-center text-slate-800">
+                    <span>$</span>
+                    <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} className="bg-transparent text-right w-20 focus:outline-none font-bold" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white calculator-metric-card">
+            <div>
+              <label className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">Total Billing Forecast</label>
+              <div className="flex items-center">
+                <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
+                <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            <div className="mt-4 space-y-1">
+              <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
+                <span className="opacity-70">Subscription:</span>
+                <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
+                <span>Est. Overage Billing:</span>
+                <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">User Distribution</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={numberOfUsers}
+                onChange={(e) => setNumberOfUsers(Math.max(0, Number(e.target.value) || 0))}
+                className="text-2xl font-bold text-slate-800 w-full focus:outline-none"
+                aria-label="Number of users"
+              />
+            </div>
+            <div className="mt-4 space-y-1">
+              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-slate-400">
+                <span>Credits Per User:</span>
+                <span className="text-slate-800 tabular-nums">
+                  {creditsPerUser != null ? creditsPerUser.toLocaleString() : "—"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Product table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
