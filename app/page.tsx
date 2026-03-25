@@ -219,7 +219,7 @@ export default function AICreditCalculatorPage() {
             <div className="mt-4 space-y-1">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
               <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-                <span>Overage Credits:</span>
+                <span>Additional Consumption:</span>
                 <span>+{overageCredits.toLocaleString()}</span>
               </div>
             </div>
@@ -236,7 +236,7 @@ export default function AICreditCalculatorPage() {
             <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Pool Unit Price</p>
               <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter">
-                <span className="text-slate-400">Overage Rate:</span>
+                <span className="text-slate-400">Consumption Rate:</span>
                 <div className="flex items-center text-slate-800">
                   <span>$</span>
                   <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} className="bg-transparent text-right w-20 focus:outline-none font-bold" />
@@ -259,7 +259,7 @@ export default function AICreditCalculatorPage() {
                 <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-                <span>Est. Overage Billing:</span>
+                <span>Est. Consumption Billing:</span>
                 <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function AICreditCalculatorPage() {
             <div className="mt-4 space-y-1">
               <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
               <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-                <span>Overage Credits:</span>
+                <span>Additional Consumption:</span>
                 <span>+{overageCredits.toLocaleString()}</span>
               </div>
             </div>
@@ -339,7 +339,7 @@ export default function AICreditCalculatorPage() {
                 <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-                <span>Est. Overage Billing:</span>
+                <span>Est. Consumption Billing:</span>
                 <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
