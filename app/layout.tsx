@@ -7,7 +7,7 @@ import { ContentstackGuard } from "./ContentstackGuard";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "AI Credit Pricing Calculator",
+  title: "Credit Consumption Calculator",
   description: "Modeling consumption and overage forecasting based on volume of runs.",
 };
 

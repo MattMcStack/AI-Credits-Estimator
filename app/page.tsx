@@ -55,6 +55,7 @@ export default function AICreditCalculatorPage() {
   const [copyButtonText, setCopyButtonText] = useState("Copy to Clipboard");
   const [numberOfUsers, setNumberOfUsers] = useState(10);
   /** `false` = current redesigned metrics; `true` = original four-card layout (Cost per Credit visible, etc.) */
+  /** Legacy layout (`true`) should only change when explicitly requested; default development targets the new layout (`false`). */
   const [showLegacyUi, setShowLegacyUi] = useState(false);
 
   const volumeCredits = useMemo(() => {
@@ -102,6 +103,16 @@ export default function AICreditCalculatorPage() {
     const n = Number.parseInt(digits, 10);
     if (!Number.isNaN(n)) setTotalCredits(n);
   }, []);
+
+  const onMonthlyVolumeChange = useCallback((index: number, e: ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (digits === "") {
+      updateProductRuns(index, 0);
+      return;
+    }
+    const n = Number.parseInt(digits, 10);
+    if (!Number.isNaN(n)) updateProductRuns(index, n);
+  }, [updateProductRuns]);
 
   const generateSummary = useCallback(() => {
     const poolStr = totalCredits.toLocaleString();
@@ -176,7 +187,7 @@ export default function AICreditCalculatorPage() {
       {/* Header */}
       <header className="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800">AI Credit Sales Calculator</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-800">Credit Consumption Calculator</h1>
           <p className="text-slate-500 mt-2">Modeling consumption and overage forecasting based on volume of runs.</p>
         </div>
         <div className="text-right flex flex-col items-end gap-2">
@@ -187,7 +198,7 @@ export default function AICreditCalculatorPage() {
           >
             {showLegacyUi ? "New View" : "Old View"}
           </button>
-          <span className="text-xs font-mono text-slate-400">v3.10.0 - Dynamic Max Thresholds</span>
+          {showLegacyUi && <span className="text-xs font-mono text-slate-400">v3.10.0 - Dynamic Max Thresholds</span>}
         </div>
       </header>
 
@@ -372,17 +383,39 @@ export default function AICreditCalculatorPage() {
 
       {/* Product table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-          <h2 className="text-xl font-semibold text-slate-800">Usage Modeling by Monthly Volume</h2>
-          <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${totalUtilPercent > 100.1 ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200" : "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"}`}>
-              Total Pool Used: {totalUtilPercent.toFixed(1)}%
-            </span>
-            <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
-              Summarize
-            </button>
-          </div>
+        <div className="p-6 border-b border-slate-100 bg-white">
+          {showLegacyUi ? (
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-slate-800">Usage Modeling by Monthly Volume</h2>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${totalUtilPercent > 100.1 ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200" : "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"}`}>
+                  Total Pool Used: {totalUtilPercent.toFixed(1)}%
+                </span>
+                <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
+                  Summarize
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-semibold text-slate-800">Usage Modeling by Monthly Volume</h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 italic mt-1.5 leading-tight tracking-tight">
+                  The consumption numbers below are estimates based on typical usage patterns and will vary depending on content length and task complexity.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 self-start sm:self-center">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${totalUtilPercent > 100.1 ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200" : "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"}`}>
+                  Total Pool Used: {totalUtilPercent.toFixed(1)}%
+                </span>
+                <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
+                  Summarize
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto table-container">
           <table className="w-full text-left border-separate border-spacing-0" style={{ tableLayout: "fixed" }} id="mainTable">
@@ -392,9 +425,11 @@ export default function AICreditCalculatorPage() {
                 <th className={`p-4 bg-slate-50 w-1/4 border-b border-slate-200 text-center transition-colors ${isEditingConsumption ? "text-indigo-600" : ""}`}>
                   <div className="flex items-center justify-center gap-2">
                     <span>Average Consumption</span>
-                    <button type="button" onClick={() => setIsEditingConsumption((v) => !v)} title="Edit consumption values" className={`p-1 hover:bg-slate-200 rounded-md transition-colors focus:outline-none ${isEditingConsumption ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:text-indigo-600"}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
-                    </button>
+                    {showLegacyUi && (
+                      <button type="button" onClick={() => setIsEditingConsumption((v) => !v)} title="Edit consumption values" className={`p-1 hover:bg-slate-200 rounded-md transition-colors focus:outline-none ${isEditingConsumption ? "text-indigo-600 bg-indigo-50" : "text-slate-400 hover:text-indigo-600"}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
+                      </button>
+                    )}
                   </div>
                 </th>
                 <th className="p-4 bg-slate-50 w-1/4 text-center border-b border-slate-200">
@@ -445,7 +480,29 @@ export default function AICreditCalculatorPage() {
                     </td>
                     <td className="p-4 text-center align-top">
                       <div className="flex flex-col items-center">
-                        <input type="number" min={0} value={p.runs} onChange={(e) => updateProductRuns(index, Number(e.target.value) || 0)} onFocus={(e) => e.target.select()} className="run-input bg-white rounded-md px-3 py-1.5 w-24 border border-slate-300 text-center font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm" placeholder="0" />
+                        {showLegacyUi ? (
+                          <input
+                            type="number"
+                            min={0}
+                            value={p.runs}
+                            onChange={(e) => updateProductRuns(index, Number(e.target.value) || 0)}
+                            onFocus={(e) => e.target.select()}
+                            className="run-input bg-white rounded-md px-3 py-1.5 w-24 border border-slate-300 text-center font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm"
+                            placeholder="0"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            aria-label={`Monthly volume for ${p.name}`}
+                            value={p.runs.toLocaleString("en-US")}
+                            onChange={(e) => onMonthlyVolumeChange(index, e)}
+                            onFocus={(e) => e.target.select()}
+                            className="run-input bg-white rounded-md px-3 py-1.5 min-w-[6.5rem] max-w-[10rem] border border-slate-300 text-center font-bold text-slate-800 tabular-nums focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm"
+                            placeholder="0"
+                          />
+                        )}
                         <span className="text-[10px] text-slate-400 mt-1 block leading-none">{p.unitLabel}</span>
                       </div>
                     </td>
