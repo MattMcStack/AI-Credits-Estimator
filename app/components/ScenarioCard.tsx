@@ -81,18 +81,26 @@ export default function ScenarioCard({
   const styles = accentStyles[accentColor];
   const totalPool = baseAllocation + upsellCredits;
   const utilPercent = totalPool > 0 ? (forecastedCredits / totalPool) * 100 : 0;
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
       {/* Header */}
       <div className={`${styles.header} px-5 py-4`}>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-bold leading-tight">{name}</h3>
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full mt-0.5">
-            {tierLabels[tier]}
-          </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold leading-tight">{name}</h3>
+            <p className={`text-xs mt-1 ${styles.tagText}`}>{tagline}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onLoad}
+            className="shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors text-white text-[11px] font-bold px-3 py-1.5 rounded-lg mt-0.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+            </svg>
+            Load Scenario
+          </button>
         </div>
-        <p className={`text-xs mt-1 ${styles.tagText}`}>{tagline}</p>
       </div>
 
       {/* Key stats */}
@@ -103,7 +111,7 @@ export default function ScenarioCard({
           <p className="text-[10px] text-slate-400 mt-0.5">{creditTierLabel}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Upsell Credits</p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Additional Purchased Credits</p>
           <p className="text-base font-bold text-slate-800 tabular-nums">
             {upsellCredits > 0 ? upsellCredits.toLocaleString() : <span className="font-normal italic text-slate-400">None</span>}
           </p>
@@ -144,7 +152,7 @@ export default function ScenarioCard({
 
       {/* Product list */}
       <div className="px-5 pb-4 flex-1">
-        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">
+        <p className="py-2 text-[10px] text-slate-400 uppercase font-bold tracking-wider">
           {tier === "byok" ? "Credit-Consuming Activities" : "Features in Use"}
         </p>
         <ul className="space-y-1.5">
@@ -162,19 +170,6 @@ export default function ScenarioCard({
         </ul>
       </div>
 
-      {/* Load button */}
-      <div className="px-5 pb-5">
-        <button
-          type="button"
-          onClick={onLoad}
-          className={`w-full ${styles.button} text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-          </svg>
-          Load into Calculator
-        </button>
-      </div>
     </div>
   );
 }

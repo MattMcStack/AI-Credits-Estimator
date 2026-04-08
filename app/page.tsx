@@ -214,6 +214,7 @@ function buildPhrasing(product: Product, value: number, isCapacity: boolean) {
 
 export default function AICreditCalculatorPage() {
   const [activeTab, setActiveTab] = useState<AppTab>("scenarios");
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>(SCENARIOS[0].id);
   const [selectedTier, setSelectedTier] = useState<CreditTier>("start");
   const [customBaseAllocation, setCustomBaseAllocation] = useState(10_000_000);
   const [upsellCredits, setUpsellCredits] = useState(0);
@@ -225,7 +226,7 @@ export default function AICreditCalculatorPage() {
   const [summaryModal, setSummaryModal] = useState(false);
   const [summaryHtml, setSummaryHtml] = useState("");
   const [copyButtonText, setCopyButtonText] = useState("Copy to Clipboard");
-  const [numberOfUsers, setNumberOfUsers] = useState(10);
+  const [numberOfUsers, setNumberOfUsers] = useState(0);
   const [showLegacyUi, setShowLegacyUi] = useState(false);
   const [activeFeatureFilters, setActiveFeatureFilters] = useState<Set<string>>(new Set());
   const [featureFilterOpen, setFeatureFilterOpen] = useState(false);
@@ -434,25 +435,13 @@ export default function AICreditCalculatorPage() {
   }, [summaryHtml]);
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 p-4 md:p-8">
+    <div className="max-w-screen-2xl mx-auto pb-12 p-4 md:p-8">
       {/* Header */}
       <header className="mb-6 border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-800">AI Credit Estimator</h1>
           <p className="text-slate-500 mt-2">Estimate AI credit usage and billing based on your customer's expected feature usage.</p>
         </div>
-        {activeTab === "usage_modeling" && (
-          <div className="text-right flex flex-col items-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowLegacyUi((v) => !v)}
-              className="text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white hover:bg-slate-50 rounded-md px-2.5 py-1 shadow-sm transition-colors"
-            >
-              {showLegacyUi ? "New View" : "Old View"}
-            </button>
-            {showLegacyUi && <span className="text-xs font-mono text-slate-400">v3.10.0 - Dynamic Max Thresholds</span>}
-          </div>
-        )}
       </header>
 
       {/* Tab bar */}
@@ -493,39 +482,95 @@ export default function AICreditCalculatorPage() {
               Example customer profile scenarios showing how different types of customers might use and consume AI credits. Load any scenario into the estimator as a starting point.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {SCENARIOS.map((scenario) => {
-              const displayProducts = scenario.products.map((snap) => {
-                const product = INITIAL_PRODUCTS.find((p) => p.id === snap.productId);
-                return {
-                  productId: snap.productId,
-                  name: product?.name ?? snap.productId,
-                  label: snap.label,
-                  note: snap.note,
-                  runs: snap.runs,
-                  totalCredits: snap.runs * (product?.credits ?? 0),
-                };
-              });
-              const forecastedCredits = displayProducts.reduce((sum, p) => sum + p.totalCredits, 0);
-              return (
-                <ScenarioCard
-                  key={scenario.id}
-                  name={scenario.name}
-                  tagline={scenario.tagline}
-                  description={scenario.description}
-                  baseAllocation={scenario.baseAllocation}
-                  upsellCredits={scenario.upsellCredits}
-                  creditTierLabel={scenario.creditTier === "custom" ? "Custom" : CREDIT_TIERS[scenario.creditTier].label}
-                  users={scenario.users}
-                  tier={scenario.tier}
-                  accentColor={scenario.accentColor}
-                  products={displayProducts}
-                  forecastedCredits={forecastedCredits}
-                  byokNote={scenario.byokNote}
-                  onLoad={() => loadScenario(scenario)}
-                />
-              );
-            })}
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+
+            {/* LEFT: compact tile list */}
+            <div className="w-full lg:w-80 shrink-0 space-y-2">
+              {SCENARIOS.map((scenario) => {
+                const isSelected = scenario.id === selectedScenarioId;
+                const totalPool = scenario.baseAllocation + scenario.upsellCredits;
+                const tileForecast = scenario.products.reduce((sum, snap) => {
+                  const product = INITIAL_PRODUCTS.find((p) => p.id === snap.productId);
+                  return sum + snap.runs * (product?.credits ?? 0);
+                }, 0);
+                const utilPercent = totalPool > 0 ? (tileForecast / totalPool) * 100 : 0;
+                const tileAccent = { indigo: "bg-indigo-600", violet: "bg-violet-600", emerald: "bg-emerald-600", amber: "bg-amber-500" }[scenario.accentColor];
+                const tileBorder = { indigo: "border-indigo-300 ring-indigo-400", violet: "border-violet-300 ring-violet-400", emerald: "border-emerald-300 ring-emerald-400", amber: "border-amber-300 ring-amber-400" }[scenario.accentColor];
+                const tileBar = { indigo: "bg-indigo-500", violet: "bg-violet-500", emerald: "bg-emerald-500", amber: "bg-amber-400" }[scenario.accentColor];
+                return (
+                  <button
+                    key={scenario.id}
+                    type="button"
+                    onClick={() => setSelectedScenarioId(scenario.id)}
+                    className={`w-full text-left rounded-xl border overflow-hidden transition-all ${
+                      isSelected ? `${tileBorder} ring-2 shadow-md` : "border-slate-200 hover:border-slate-300 shadow-sm"
+                    }`}
+                  >
+                    <div className={`${tileAccent} px-3 py-2.5`}>
+                      <p className="text-sm font-bold text-white leading-tight">{scenario.name}</p>
+                      <p className="text-[10px] text-white/70 mt-0.5 truncate">{scenario.tagline}</p>
+                    </div>
+                    <div className="bg-white px-3 py-2.5 space-y-1.5">
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span className="text-slate-400 uppercase font-bold tracking-wider">Base Allocation</span>
+                        <span className="font-semibold tabular-nums text-slate-700">{scenario.baseAllocation.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span className="text-slate-400 uppercase font-bold tracking-wider">Additional Credits</span>
+                        <span className="font-semibold tabular-nums text-slate-700">
+                          {scenario.upsellCredits > 0 ? scenario.upsellCredits.toLocaleString() : <span className="italic text-slate-400">None</span>}
+                        </span>
+                      </div>
+                      <div className="pt-0.5">
+                        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                          <span>{utilPercent.toFixed(0)}% forecasted usage</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                          <div className={`${tileBar} h-full`} style={{ width: `${Math.min(utilPercent, 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* RIGHT: full detail panel for selected scenario */}
+            <div className="flex-1 min-w-0">
+              {(() => {
+                const scenario = SCENARIOS.find((s) => s.id === selectedScenarioId)!;
+                const displayProducts = scenario.products.map((snap) => {
+                  const product = INITIAL_PRODUCTS.find((p) => p.id === snap.productId);
+                  return {
+                    productId: snap.productId,
+                    name: product?.name ?? snap.productId,
+                    label: snap.label,
+                    note: snap.note,
+                    runs: snap.runs,
+                    totalCredits: snap.runs * (product?.credits ?? 0),
+                  };
+                });
+                const forecastedCredits = displayProducts.reduce((sum, p) => sum + p.totalCredits, 0);
+                return (
+                  <ScenarioCard
+                    name={scenario.name}
+                    tagline={scenario.tagline}
+                    description={scenario.description}
+                    baseAllocation={scenario.baseAllocation}
+                    upsellCredits={scenario.upsellCredits}
+                    creditTierLabel={scenario.creditTier === "custom" ? "Custom" : CREDIT_TIERS[scenario.creditTier].label}
+                    users={scenario.users}
+                    tier={scenario.tier}
+                    accentColor={scenario.accentColor}
+                    products={displayProducts}
+                    forecastedCredits={forecastedCredits}
+                    byokNote={scenario.byokNote}
+                    onLoad={() => loadScenario(scenario)}
+                  />
+                );
+              })()}
+            </div>
+
           </div>
         </div>
       )}
@@ -612,8 +657,11 @@ export default function AICreditCalculatorPage() {
               </div>
             </div>
           ) : (
-            // New view: pool card full-width on top, then 3-column grid for metrics below
-            <div className="mb-10 space-y-6">
+            // New view: left column (config + table) + sticky right sidebar (results)
+            <div className="flex flex-col lg:flex-row gap-6 items-start mb-10">
+
+            {/* LEFT COLUMN: config cards + table */}
+            <div className="flex-1 min-w-0 space-y-6">
 
               {/* Monthly Credit Pool — full width */}
               <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
@@ -626,9 +674,12 @@ export default function AICreditCalculatorPage() {
                   <div className="flex-1 pr-8">
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
                       Base Allocation
-                      {selectedTier === "custom" && (
-                        <svg className="w-2.5 h-2.5 opacity-50" viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609zm1.414 1.06a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354l-1.086-1.086zM11.189 6.25 9.75 4.81l-6.286 6.287a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064L11.19 6.25z"/></svg>
-                      )}
+                      <span className="relative group inline-flex items-center">
+                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                          The number of credits included in this customer's plan tier.
+                        </span>
+                      </span>
                     </p>
                     {selectedTier === "custom" ? (
                       <input
@@ -657,16 +708,18 @@ export default function AICreditCalculatorPage() {
                         <option value="custom">Custom</option>
                       </select>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      {selectedTier === "custom" ? "Custom allocation" : "Included in tier"}
-                    </p>
                   </div>
 
                   {/* Additional Credits (upsell) */}
                   <div className="flex-1 px-8">
                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
                       Additional Credits
-                      <svg className="w-2.5 h-2.5 opacity-50" viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609zm1.414 1.06a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354l-1.086-1.086zM11.189 6.25 9.75 4.81l-6.286 6.287a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064L11.19 6.25z"/></svg>
+                      <span className="relative group inline-flex items-center">
+                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                          Model an upsell of credits beyond the included base allocation to see the impact on billing.
+                        </span>
+                      </span>
                     </p>
                     <input
                       id="upsell-credits-input"
@@ -678,123 +731,26 @@ export default function AICreditCalculatorPage() {
                       className="text-2xl font-bold text-slate-800 w-full tabular-nums bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
                       placeholder="0"
                     />
-                    <div className="h-4 mt-1">
-                      {volumeCredits > baseAllocation && (
-                        <p className="text-[10px] text-slate-400 leading-tight">
-                          Usage requires {(volumeCredits - baseAllocation).toLocaleString()} credits beyond base.
-                        </p>
-                      )}
-                    </div>
                   </div>
 
                   {/* Total Pool */}
                   <div className="flex-1 pl-8">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1">Total Pool</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
+                      Total Pool
+                      <span className="relative group inline-flex items-center">
+                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                          The total credits available: base allocation plus any additional credits purchased.
+                        </span>
+                      </span>
+                    </p>
                     <p className="text-2xl font-bold text-slate-800 tabular-nums">{totalCredits.toLocaleString()}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Contracted Capacity</p>
                   </div>
 
                 </div>
               </div>
 
-              {/* Metric cards row — 3 columns */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-              {/* Projected Consumption */}
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Projected Consumption</label>
-                  <span className="text-2xl font-bold text-slate-800">{volumeCredits.toLocaleString()}</span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
-                  <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-                    <span>Additional Consumption:</span>
-                    <span>+{overageCredits.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hidden pricing inputs — still drive math */}
-              <div className="hidden" aria-hidden="true">
-                <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cost per Credit</label>
-                    <div className="flex items-center">
-                      <span className="text-xl font-semibold text-slate-400 mr-1">$</span>
-                      <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} className="text-2xl font-bold text-slate-800 w-full focus:outline-none" />
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
-                    <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Pool Unit Price</p>
-                    <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter">
-                      <span className="text-slate-400">Overage Rate:</span>
-                      <div className="flex items-center text-slate-800">
-                        <span>$</span>
-                        <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} className="bg-transparent text-right w-20 focus:outline-none font-bold" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Total Billing Forecast */}
-              <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white calculator-metric-card">
-                <div>
-                  <label className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">Total Billing Forecast</label>
-                  <div className="flex items-center">
-                    <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
-                    <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <div className="flex justify-between text-xs uppercase font-bold tracking-tighter opacity-70">
-                    <span>Base Allocation:</span>
-                    <span>Included</span>
-                  </div>
-                  <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
-                    <span className="opacity-70">Additional Credits:</span>
-                    <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-                    <span>Est. Consumption Billing:</span>
-                    <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Number of Users */}
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 calculator-metric-card">
-                <div>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                    Number of Users
-                    <svg className="w-2.5 h-2.5 opacity-50" viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609zm1.414 1.06a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354l-1.086-1.086zM11.189 6.25 9.75 4.81l-6.286 6.287a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064L11.19 6.25z"/></svg>
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={numberOfUsers}
-                    onChange={(e) => setNumberOfUsers(Math.max(0, Number(e.target.value) || 0))}
-                    className="text-2xl font-bold text-slate-800 w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
-                    aria-label="Number of users"
-                  />
-                </div>
-                <div className="mt-4 space-y-1">
-                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-slate-400">
-                    <span>Credits Per User:</span>
-                    <span className="text-slate-800 tabular-nums">
-                      {creditsPerUser != null ? creditsPerUser.toLocaleString() : "—"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              </div>{/* end 3-col metric grid */}
-            </div>
-          )}
-
-          {/* Product table */}
+            {/* Product table — inside left column */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-white">
               {showLegacyUi ? (
@@ -1048,6 +1004,120 @@ export default function AICreditCalculatorPage() {
               </table>
             </div>
           </div>
+          </div>{/* end left column */}
+
+          {/* RIGHT SIDEBAR — sticky results */}
+          <div className="w-full lg:w-72 shrink-0 lg:sticky lg:top-6 space-y-4">
+
+            {/* Number of Users */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Number of Users
+                <span className="relative group inline-flex items-center">
+                  <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                    An optional input to estimate how credits could be distributed across your team.
+                  </span>
+                </span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={numberOfUsers}
+                onChange={(e) => setNumberOfUsers(Math.max(0, Number(e.target.value) || 0))}
+                className="text-2xl font-bold text-slate-800 w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
+                aria-label="Number of users"
+              />
+              <div className="mt-3">
+                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-slate-400">
+                  <span>Credits Per User:</span>
+                  <span className="text-slate-800 tabular-nums">
+                    {creditsPerUser != null ? creditsPerUser.toLocaleString() : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Projected Usage */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Projected Usage
+                <span className="relative group inline-flex items-center">
+                  <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                    The total credits consumed by the volumes entered in the table. Additional Consumption shows credits used beyond the base allocation.
+                  </span>
+                </span>
+              </label>
+              <span className="text-2xl font-bold text-slate-800">{volumeCredits.toLocaleString()}</span>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
+                <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
+                  <span>Additional Consumption:</span>
+                  <span>+{overageCredits.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Billing Forecast */}
+            <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white">
+              <label className="flex items-center gap-1 text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">
+                Total Billing Forecast
+                <span className="relative group inline-flex items-center">
+                  <span className="cursor-default text-[9px] text-indigo-200 border border-indigo-400 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-indigo-500 transition-colors">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                    Estimated total cost based on the additional credits purchased and any overage consumption beyond the credit pool.
+                  </span>
+                </span>
+              </label>
+              <div className="flex items-center">
+                <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
+                <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="mt-4 space-y-1">
+                <div className="flex justify-between text-xs uppercase font-bold tracking-tighter opacity-70">
+                  <span>Base Allocation:</span>
+                  <span>Included</span>
+                </div>
+                <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
+                  <span className="opacity-70">Additional Credits:</span>
+                  <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
+                  <span>Est. Consumption Billing:</span>
+                  <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Reset CTA */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setProducts(INITIAL_PRODUCTS.map((p) => ({ ...p })));
+                  setUpsellCredits(0);
+                  setNumberOfUsers(0);
+                  setSelectedTier("custom");
+                  setCustomBaseAllocation(0);
+                }}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Hidden pricing inputs — still drive math */}
+            <div className="hidden" aria-hidden="true">
+              <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} />
+              <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} />
+            </div>
+
+          </div>
+
+          </div>
+          )}{/* end showLegacyUi ternary */}
         </>
       )}
 
