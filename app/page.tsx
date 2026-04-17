@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import ScenarioCard from "./components/ScenarioCard";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+// ScenarioCard component retained but detail panel is now inline
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,23 @@ type Scenario = {
   byokNote?: string;
 };
 
+type ExportedConfig = {
+  version: 1;
+  exportedAt: string;
+  selectedTier: CreditTier;
+  customBaseAllocation: number;
+  upsellCredits: number;
+  costPerCredit: number;
+  overageRate: number;
+  numberOfUsers: number;
+  products: {
+    id: string;
+    runs: number;
+    frequencyMode?: FrequencyMode;
+    rawFrequencyInput?: number;
+  }[];
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CREDIT_TIERS: Record<Exclude<CreditTier, "custom">, { label: string; base: number }> = {
@@ -72,7 +89,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "assets",
     name: "Assets",
     sub: "Upload Image and Generate Metadata",
-    credits: 2580,
+    credits: 2600,
     runs: 0,
     unitLabel: "Images",
     action: "Upload and generate metadata for",
@@ -82,7 +99,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "automate",
     name: "Automate",
     sub: "One Execution with Multiple Steps",
-    credits: 145,
+    credits: 150,
     runs: 0,
     unitLabel: "Executions",
     action: "Run",
@@ -90,26 +107,47 @@ const INITIAL_PRODUCTS: Product[] = [
     frequencyMode: "per_month",
     rawFrequencyInput: 0,
   },
-  { id: "brandkit_web", name: "Brand Kit", sub: "Vault from Website (per web page)", credits: 5142, runs: 0, unitLabel: "Web Pages", action: "Vault" },
-  { id: "brandkit_pdf", name: "Brand Kit", sub: "Vault from PDF Document (per page)", credits: 390, runs: 0, unitLabel: "PDF Pages", action: "Vault" },
-  { id: "studio_comp", name: "Visual Experience", sub: "Figma to Studio Component", credits: 53717, runs: 0, unitLabel: "Studio Components", action: "Generate" },
-  { id: "react_comp", name: "Visual Experience", sub: "Figma to React Component", credits: 80433, runs: 0, unitLabel: "React Components", action: "Export" },
-  { id: "polaris_art", name: "Polaris", sub: "Create and Article with SEO and Update Workflow", credits: 49500, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Create a new 'page' entry about the Joys of Staying at the Red Panda. Add appropriate metadata and SEO tags and put it in the 'Review' workflow stage.", action: "Generate" },
-  { id: "polaris_rel", name: "Polaris", sub: "Release & Deploy (Entry + Deployment)", credits: 75600, runs: 0, unitLabel: "Prompts", summaryUnit: "Releases", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Take the last entry that was created and add it to the latest release. Then, deploy the release.", action: "Manage" },
-  { id: "polaris_trans", name: "Polaris", sub: "Translate an Article from English to French", credits: 83000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles into another language", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Translate this entry into French.", action: "Translate" },
-  { id: "agent_story", name: "Custom Agents", sub: "Story Ideas (Research + 5 Ideas)", credits: 330000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
-  { id: "agent_seo", name: "Custom Agents", sub: "SEO Meta Agent (Analyze & Tag)", credits: 35000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
-  { id: "agent_trans", name: "Custom Agents", sub: "Translate an Entry Upon Workflow Stage", credits: 50000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that translates an entry into 3 languages when it hits 'Translate' workflow stage.", action: "Orchestrate translations for" },
-  { id: "concierge", name: "Digital Concierge", sub: "User Q&A (Knowledge Base Search)", credits: 3000, runs: 0, unitLabel: "Prompts", action: "special" },
+  { id: "brandkit_web", name: "Brand Kit", sub: "Knowledge Vault ingestion from website url (per web page)", credits: 5200, runs: 0, unitLabel: "Web Pages", action: "Vault" },
+  { id: "brandkit_pdf", name: "Brand Kit", sub: "Knowledge Vault file ingestion (per page)", credits: 400, runs: 0, unitLabel: "PDF Pages", action: "Vault" },
+  { id: "studio_comp", name: "Visual Studio", sub: "Convert Figma Design to Studio Component", credits: 54000, runs: 0, unitLabel: "Studio Components", action: "Generate" },
+  { id: "react_comp", name: "Visual Studio", sub: "Convert Figma Design to React Component", credits: 80000, runs: 0, unitLabel: "React Components", action: "Export" },
+  { id: "polaris_art", name: "Polaris", sub: "Create an Article with SEO and Change Workflow Status", credits: 50000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Create a new 'page' entry about the Joys of Staying at the Red Panda. Add appropriate metadata and SEO tags and put it in the 'Review' workflow stage.", action: "Generate" },
+  { id: "polaris_rel", name: "Polaris", sub: "Add entry to release and deploy", credits: 75000, runs: 0, unitLabel: "Prompts", summaryUnit: "Releases", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Take the last entry that was created and add it to the latest release. Then, deploy the release.", action: "Manage" },
+  { id: "polaris_trans", name: "Polaris", sub: "Translate an Article from English to French", credits: 85000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles into another language", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Translate this entry into French.", action: "Translate" },
+  { id: "agent_story", name: "Custom Agents", sub: "Research & generate 5 story ideas", credits: 330000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
+  { id: "agent_seo", name: "Custom Agents", sub: "Analyze an entry and update SEO tags", credits: 35000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
+  { id: "agent_trans", name: "Custom Agents", sub: "Translate an entry upon workflow stage change", credits: 50000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that translates an entry into 3 languages when it hits 'Translate' workflow stage.", action: "Orchestrate translations for" },
 ];
 
 // Scenario credit volumes calibrated so each scenario uses ~91–97% of its pool.
 const SCENARIOS: Scenario[] = [
   {
+    id: "grow_base_only",
+    name: "X3/Grow — Base Only",
+    tagline: "15 users · 20M base allocation · no upsell",
+    description: "An existing X3/Grow customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable at the Grow tier before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
+    creditTier: "grow",
+    baseAllocation: 20_000_000,
+    upsellCredits: 0,
+    users: 15,
+    tier: "grow",
+    accentColor: "amber",
+    products: [
+      { productId: "brandkit_web",  runs: 20,  note: "Brand vault maintenance" },
+      { productId: "brandkit_pdf",  runs: 100 },
+      { productId: "polaris_art",   runs: 120, note: "~4/day" },
+      { productId: "polaris_rel",   runs: 40 },
+      { productId: "polaris_trans", runs: 25,  note: "Localization" },
+      { productId: "agent_seo",     runs: 100, note: "SEO automation" },
+      { productId: "agent_trans",   runs: 30 },
+    ],
+    // Forecasted total: 19,000,840 credits = 95.0% of 20M
+  },
+  {
     id: "power_customer",
     name: "Power Customer",
     tagline: "100 users · 500M credits · full platform",
-    description: "A large enterprise team using every Contentstack AI feature at high daily volume. Polaris handles content creation, translation, and releases. Custom Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, Digital Concierge handles user Q&A, and Automate orchestrates the workflows that tie it all together.",
+    description: "A large enterprise team using every Contentstack AI feature at high daily volume. Polaris handles content creation, translation, and releases. Custom Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, and Automate orchestrates the workflows that tie it all together.",
     creditTier: "scale",
     baseAllocation: 50_000_000,
     upsellCredits: 450_000_000,
@@ -129,14 +167,13 @@ const SCENARIOS: Scenario[] = [
       { productId: "agent_story",  runs: 150,   note: "~5/day" },
       { productId: "agent_seo",    runs: 3000,  note: "~100/day" },
       { productId: "agent_trans",  runs: 1500,  note: "~50/day" },
-      { productId: "concierge",    runs: 5000,  note: "~167/day" },
     ],
   },
   {
     id: "mid_tier",
     name: "Mid-Tier Customer",
     tagline: "25 users · 25M credits · focused toolset",
-    description: "A growing content team focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Custom Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Experience usage in this profile.",
+    description: "A growing content team focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Custom Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Studio usage in this profile.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 5_000_000,
@@ -157,14 +194,14 @@ const SCENARIOS: Scenario[] = [
     id: "byok",
     name: "BYOK Customer",
     tagline: "10M credits · brings own AI keys",
-    description: "This customer uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris, Custom Agents, and Digital Concierge consume zero Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
+    description: "This customer uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris and Custom Agents consume zero Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
     creditTier: "start",
     baseAllocation: 10_000_000,
     upsellCredits: 0,
     users: 10,
     tier: "byok",
     accentColor: "emerald",
-    byokNote: "Polaris, Custom Agents, and Digital Concierge use your own LLM keys — no Contentstack credits consumed for these features.",
+    byokNote: "Polaris and Custom Agents use your own LLM keys — no Contentstack credits consumed for these features.",
     products: [
       { productId: "automate",     runs: 6000, note: "~200/day", label: "Automate Executions" },
       { productId: "brandkit_web", runs: 200,  note: "KV ingestion via web", label: "Brand Kit — Web Ingestion" },
@@ -172,42 +209,28 @@ const SCENARIOS: Scenario[] = [
       { productId: "assets",       runs: 2500, note: "Metadata processing", label: "Assets" },
     ],
   },
-  {
-    id: "grow_base_only",
-    name: "X3/Grow — Base Only",
-    tagline: "15 users · 20M base allocation · no upsell",
-    description: "An existing X3/Grow customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable at the Grow tier before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
-    creditTier: "grow",
-    baseAllocation: 20_000_000,
-    upsellCredits: 0,
-    users: 15,
-    tier: "grow",
-    accentColor: "amber",
-    products: [
-      { productId: "brandkit_web",  runs: 20,  note: "Brand vault maintenance" },
-      { productId: "brandkit_pdf",  runs: 100 },
-      { productId: "polaris_art",   runs: 120, note: "~4/day" },
-      { productId: "polaris_rel",   runs: 40 },
-      { productId: "polaris_trans", runs: 25,  note: "Localization" },
-      { productId: "agent_seo",     runs: 100, note: "SEO automation" },
-      { productId: "agent_trans",   runs: 30 },
-      { productId: "concierge",     runs: 940, note: "~31/day" },
-    ],
-    // Forecasted total: 19,000,840 credits = 95.0% of 20M
-  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildPhrasing(product: Product, value: number, isCapacity: boolean) {
-  const unit = product.summaryUnit || product.unitLabel;
   const valStr = value.toLocaleString();
-  const prefix = isCapacity ? "up to " : "";
-  if (product.id === "agent_story") return `Generate story Ideas ${prefix}${valStr} times using a Custom Agent.`;
-  if (product.id === "concierge") return `Ask the Digital Concierge ${prefix}${valStr} Questions and get answers.`;
-  if (product.id.includes("agent_")) return `${product.action} ${prefix}${valStr} ${unit} with a Custom Agent.`;
-  if (product.id.includes("polaris")) return `${product.action} ${prefix}${valStr} ${unit} with ${product.name}.`;
-  return `${product.action} ${prefix}${valStr} ${unit} with ${product.name}.`;
+  const p = isCapacity ? "up to " : "";
+  switch (product.id) {
+    case "assets": return `Upload and generate metadata for ${p}${valStr} images.`;
+    case "automate": return `Run ${p}${valStr} Automate executions.`;
+    case "brandkit_web": return `Ingest ${p}${valStr} web pages into Knowledge Vault.`;
+    case "brandkit_pdf": return `Ingest ${p}${valStr} PDF pages into Knowledge Vault.`;
+    case "studio_comp": return `Convert ${p}${valStr} Figma designs to Studio components.`;
+    case "react_comp": return `Convert ${p}${valStr} Figma designs to React components.`;
+    case "polaris_art": return `Create ${p}${valStr} articles with SEO and change workflow status.`;
+    case "polaris_rel": return `Add ${p}${valStr} entries to a release and deploy.`;
+    case "polaris_trans": return `Translate ${p}${valStr} articles into another language.`;
+    case "agent_story": return `Research and generate story ideas ${p}${valStr} times.`;
+    case "agent_seo": return `Analyze ${p}${valStr} entries and update SEO tags.`;
+    case "agent_trans": return `Translate ${p}${valStr} entries upon workflow stage change.`;
+    default: return `${product.action} ${p}${valStr} ${product.summaryUnit || product.unitLabel}.`;
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -230,7 +253,10 @@ export default function AICreditCalculatorPage() {
   const [showLegacyUi, setShowLegacyUi] = useState(false);
   const [activeFeatureFilters, setActiveFeatureFilters] = useState<Set<string>>(new Set());
   const [featureFilterOpen, setFeatureFilterOpen] = useState(false);
+  const [flashForecast, setFlashForecast] = useState(false);
   const featureFilterRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importStatus, setImportStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     if (!featureFilterOpen) return;
@@ -257,6 +283,26 @@ export default function AICreditCalculatorPage() {
   const totalCost = subscriptionCost + overageCost;
   const totalUtilPercent = totalCredits > 0 ? (volumeCredits / totalCredits) * 100 : 0;
   const remainingPool = Math.max(0, totalCredits - volumeCredits);
+
+  const prevTotalCostRef = useRef(totalCost);
+  useEffect(() => {
+    if (prevTotalCostRef.current !== totalCost && totalCost > 0) {
+      prevTotalCostRef.current = totalCost;
+      setFlashForecast(true);
+      const timer = setTimeout(() => setFlashForecast(false), 300);
+      return () => clearTimeout(timer);
+    }
+    prevTotalCostRef.current = totalCost;
+  }, [totalCost]);
+
+
+  // Auto-dismiss import success message
+  useEffect(() => {
+    if (importStatus?.type === "success") {
+      const t = setTimeout(() => setImportStatus(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [importStatus]);
 
   const uniqueFeatureNames = useMemo(
     () => Array.from(new Set(products.map((p) => p.name))),
@@ -333,6 +379,67 @@ export default function AICreditCalculatorPage() {
     setActiveTab("usage_modeling");
   }, []);
 
+  const exportConfig = useCallback(() => {
+    const data: ExportedConfig = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      selectedTier,
+      customBaseAllocation,
+      upsellCredits,
+      costPerCredit,
+      overageRate,
+      numberOfUsers,
+      products: products.map((p) => {
+        const entry: ExportedConfig["products"][number] = { id: p.id, runs: p.runs };
+        if (p.isFrequencyProduct) {
+          entry.frequencyMode = p.frequencyMode;
+          entry.rawFrequencyInput = p.rawFrequencyInput;
+        }
+        return entry;
+      }),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `credit-model-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [selectedTier, customBaseAllocation, upsellCredits, costPerCredit, overageRate, numberOfUsers, products]);
+
+  const importConfig = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(text); } catch { setImportStatus({ type: "error", message: "Invalid JSON file" }); return; }
+
+      if (typeof data.version !== "number" || data.version < 1) { setImportStatus({ type: "error", message: "Unsupported file format" }); return; }
+      const validTiers = ["start", "grow", "scale", "custom"];
+      if (!validTiers.includes(data.selectedTier as string)) { setImportStatus({ type: "error", message: "Invalid configuration: missing credit tier" }); return; }
+      if (!Array.isArray(data.products)) { setImportStatus({ type: "error", message: "Invalid configuration: missing products" }); return; }
+
+      setSelectedTier(data.selectedTier as CreditTier);
+      setCustomBaseAllocation(typeof data.customBaseAllocation === "number" ? data.customBaseAllocation : 10_000_000);
+      setUpsellCredits(typeof data.upsellCredits === "number" ? data.upsellCredits : 0);
+      setCostPerCredit(typeof data.costPerCredit === "number" ? data.costPerCredit : 0.0000155);
+      setOverageRate(typeof data.overageRate === "number" ? data.overageRate : 0.0000185);
+      setNumberOfUsers(typeof data.numberOfUsers === "number" ? data.numberOfUsers : 0);
+
+      const importedProducts = data.products as ExportedConfig["products"];
+      setProducts(
+        INITIAL_PRODUCTS.map((p) => {
+          const snap = importedProducts.find((s) => s.id === p.id);
+          if (!snap) return { ...p, runs: 0 };
+          if (p.isFrequencyProduct) {
+            return { ...p, runs: snap.runs, frequencyMode: snap.frequencyMode ?? "per_month" as FrequencyMode, rawFrequencyInput: snap.rawFrequencyInput ?? snap.runs };
+          }
+          return { ...p, runs: snap.runs };
+        })
+      );
+      setImportStatus({ type: "success", message: "Configuration imported" });
+    } catch { setImportStatus({ type: "error", message: "Failed to read file" }); }
+  }, []);
+
   const onTierChange = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
     const tier = e.target.value as CreditTier;
     if (tier === "custom") {
@@ -368,49 +475,99 @@ export default function AICreditCalculatorPage() {
     const costStr = totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const utilStr = totalUtilPercent.toFixed(1) + "%";
     const overageCostStr = overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const overageText = overageCredits > 0
-      ? `This modeling includes +${overageCredits.toLocaleString()} credits in overage usage (representing $${overageCostStr} of the total forecast).`
-      : "This modeling fits comfortably within your total credit pool.";
+    const subscriptionCostStr = subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const baseStr = baseAllocation.toLocaleString();
+    const upsellStr = upsellCredits.toLocaleString();
 
-    let currentProjections = "";
     let remainingCapacityList = "";
     let hasAnyUsage = false;
+    const usageItems: string[] = [];
 
     products.forEach((product) => {
       if (product.runs > 0) {
         hasAnyUsage = true;
-        currentProjections += `<p class="mb-3">${buildPhrasing(product, product.runs, false)}</p>`;
+        usageItems.push(`<p style="margin-bottom:8px;font-size:13px;color:#334155">${buildPhrasing(product, product.runs, false)}</p>`);
       }
       if (remainingPool > 0) {
         const maxPossible = Math.floor(remainingPool / product.credits);
-        if (maxPossible > 0) remainingCapacityList += `<li>${buildPhrasing(product, maxPossible, true)}</li>`;
+        if (maxPossible > 0) remainingCapacityList += `<li style="margin-bottom:4px">${buildPhrasing(product, maxPossible, true)}</li>`;
       }
     });
 
-    const forecastedUsageSection = hasAnyUsage
-      ? `<div class="mb-6"><h4 class="font-bold text-slate-800 mb-4">Forecasted Usage</h4>${currentProjections}</div>`
-      : "";
-    const remainingSection = remainingPool > 0
-      ? `<div><p class="mb-4 text-indigo-700 font-bold">With your remaining balance of ${remainingPool.toLocaleString()} available credits, you could still do any of the following:</p><ul class="list-disc pl-5 space-y-2 text-slate-600">${remainingCapacityList}</ul></div>`
-      : volumeCredits > totalCredits
-        ? `<div><p class="text-rose-600 font-bold">Current volume projections have exhausted the standard pool. Future runs will be billed at the overage rate.</p></div>`
-        : "";
+    const creditPoolSection = `
+      <div style="margin-bottom:24px">
+        <h4 style="font-size:13px;font-weight:700;color:#6C40FF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Credit Pool</h4>
+        <div style="display:flex;gap:12px;margin-bottom:16px">
+          <div style="flex:1;background:#F8FAFC;border-radius:8px;padding:12px">
+            <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;letter-spacing:0.05em">Base Allocation</div>
+            <div style="font-size:18px;font-weight:700;color:#0D1F3A;margin-top:2px">${baseStr}</div>
+          </div>
+          <div style="flex:1;background:#F8FAFC;border-radius:8px;padding:12px">
+            <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:#94a3b8;letter-spacing:0.05em">Additional Purchased</div>
+            <div style="font-size:18px;font-weight:700;color:#0D1F3A;margin-top:2px">${upsellStr}</div>
+          </div>
+          <div style="flex:1;background:#EBE5FF;border-radius:8px;padding:12px">
+            <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:#6C40FF;letter-spacing:0.05em">Total Pool</div>
+            <div style="font-size:18px;font-weight:700;color:#6C40FF;margin-top:2px">${poolStr}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="flex:1;background:#e2e8f0;border-radius:99px;height:6px;overflow:hidden">
+            <div style="width:${Math.min(totalUtilPercent, 100)}%;height:100%;background:#6C40FF;border-radius:99px"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:#0D1F3A">${utilStr}</span>
+        </div>
+        <div style="font-size:11px;color:#64748b">Forecasted usage: <strong style="color:#0D1F3A">${forecastStr}</strong> credits</div>
+      </div>
+    `;
 
-    const track = `
-      <p class="text-lg">With <strong>${poolStr} credits</strong> per month and a forecast usage of <strong>${forecastStr} credits</strong>, the total monthly billing forecast is <strong>$${costStr}</strong>.</p>
-      <br>
-      <p>${overageText} This represents a utilization rate of ${utilStr}.</p>
-      <br>
-      <div class="mt-2 pt-6 border-t border-slate-100">
-        ${forecastedUsageSection}
-        <div class="${hasAnyUsage ? "mt-6 pt-4 border-t border-dashed border-slate-200" : ""}">
-          ${remainingSection}
+    const billingSection = `
+      <div style="margin-bottom:24px">
+        <h4 style="font-size:13px;font-weight:700;color:#6C40FF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Billing Forecast</h4>
+        <div style="background:#F8FAFC;border-radius:8px;padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <span style="font-size:12px;color:#64748b">Base Allocation</span>
+            <span style="font-size:12px;font-weight:600;color:#0D1F3A">Included</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <span style="font-size:12px;color:#64748b">Additional Credits Cost</span>
+            <span style="font-size:12px;font-weight:600;color:#0D1F3A">$${subscriptionCostStr}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;border-top:1px dashed #e2e8f0;margin-bottom:12px">
+            <span style="font-size:12px;color:${overageCredits > 0 ? "#ef4444" : "#64748b"}">Consumption Cost</span>
+            <span style="font-size:12px;font-weight:600;color:${overageCredits > 0 ? "#ef4444" : "#0D1F3A"}">$${overageCostStr}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;border-top:2px solid #e2e8f0">
+            <span style="font-size:14px;font-weight:700;color:#0D1F3A">Total Monthly Estimate</span>
+            <span style="font-size:20px;font-weight:800;color:#6C40FF">$${costStr}</span>
+          </div>
         </div>
       </div>
     `;
-    setSummaryHtml(track);
+
+    const usageSection = hasAnyUsage ? `
+      <div style="margin-bottom:24px">
+        <h4 style="font-size:13px;font-weight:700;color:#6C40FF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Forecasted Usage</h4>
+        <p style="font-size:12px;color:#6C40FF;font-weight:600;margin-bottom:8px">With ${forecastStr} credits forecasted, here is the projected usage:</p>
+        ${usageItems.join("")}
+      </div>
+    ` : "";
+
+    const remainingSection = remainingPool > 0 && remainingCapacityList ? `
+      <div>
+        <h4 style="font-size:13px;font-weight:700;color:#6C40FF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Remaining Capacity</h4>
+        <p style="font-size:12px;color:#6C40FF;font-weight:600;margin-bottom:8px">With ${remainingPool.toLocaleString()} credits remaining, you could still do one of the following:</p>
+        <ul style="list-style:disc;padding-left:20px;font-size:13px;color:#334155">${remainingCapacityList}</ul>
+      </div>
+    ` : overageCredits > 0 ? `
+      <div>
+        <p style="font-size:13px;color:#ef4444;font-weight:600">Current volume projections have exhausted the standard pool. Future runs will be billed at the consumption rate.</p>
+      </div>
+    ` : "";
+
+    setSummaryHtml(`${creditPoolSection}${billingSection}${usageSection}${remainingSection}`);
     setSummaryModal(true);
-  }, [totalCredits, volumeCredits, totalCost, totalUtilPercent, overageCredits, overageCost, remainingPool, products]);
+  }, [totalCredits, volumeCredits, totalCost, totalUtilPercent, overageCredits, overageCost, remainingPool, products, baseAllocation, upsellCredits, subscriptionCost]);
 
   const copySummary = useCallback(async () => {
     const plainEl = document.createElement("div");
@@ -479,63 +636,34 @@ export default function AICreditCalculatorPage() {
         <div>
           <div className="mb-6">
             <p className="text-sm text-slate-500">
-              Example customer profile scenarios showing how different types of customers might use and consume AI credits. Load any scenario into the estimator as a starting point.
+              Example customer scenarios showing how different types of customers might use and consume AI credits. Load any scenario into the estimator as a starting point.
             </p>
           </div>
           <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-            {/* LEFT: compact tile list */}
-            <div className="w-full lg:w-80 shrink-0 space-y-2">
+            {/* LEFT: master navigation list */}
+            <div className="w-full lg:w-56 shrink-0 space-y-2">
               {SCENARIOS.map((scenario) => {
                 const isSelected = scenario.id === selectedScenarioId;
-                const totalPool = scenario.baseAllocation + scenario.upsellCredits;
-                const tileForecast = scenario.products.reduce((sum, snap) => {
-                  const product = INITIAL_PRODUCTS.find((p) => p.id === snap.productId);
-                  return sum + snap.runs * (product?.credits ?? 0);
-                }, 0);
-                const utilPercent = totalPool > 0 ? (tileForecast / totalPool) * 100 : 0;
-                const tileAccent = { indigo: "bg-indigo-600", violet: "bg-violet-600", emerald: "bg-emerald-600", amber: "bg-amber-500" }[scenario.accentColor];
-                const tileBorder = { indigo: "border-indigo-300 ring-indigo-400", violet: "border-violet-300 ring-violet-400", emerald: "border-emerald-300 ring-emerald-400", amber: "border-amber-300 ring-amber-400" }[scenario.accentColor];
-                const tileBar = { indigo: "bg-indigo-500", violet: "bg-violet-500", emerald: "bg-emerald-500", amber: "bg-amber-400" }[scenario.accentColor];
+                const tileBg = { indigo: "#EBE5FF", violet: "#E7F0FF", emerald: "#EBFBF5", amber: "#FFF4E4" }[scenario.accentColor];
+                const tileTextColor = { indigo: "#6C40FF", violet: "#2563EB", emerald: "#059669", amber: "#B45309" }[scenario.accentColor];
                 return (
                   <button
                     key={scenario.id}
                     type="button"
                     onClick={() => setSelectedScenarioId(scenario.id)}
-                    className={`w-full text-left rounded-xl border overflow-hidden transition-all ${
-                      isSelected ? `${tileBorder} ring-2 shadow-md` : "border-slate-200 hover:border-slate-300 shadow-sm"
+                    className={`w-full text-left rounded-xl px-4 py-3 transition-all ${
+                      isSelected ? "border-2 border-[#6C40FF] shadow-md" : "border-2 border-transparent hover:shadow-sm"
                     }`}
+                    style={{ backgroundColor: tileBg }}
                   >
-                    <div className={`${tileAccent} px-3 py-2.5`}>
-                      <p className="text-sm font-bold text-white leading-tight">{scenario.name}</p>
-                      <p className="text-[10px] text-white/70 mt-0.5 truncate">{scenario.tagline}</p>
-                    </div>
-                    <div className="bg-white px-3 py-2.5 space-y-1.5">
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span className="text-slate-400 uppercase font-bold tracking-wider">Base Allocation</span>
-                        <span className="font-semibold tabular-nums text-slate-700">{scenario.baseAllocation.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span className="text-slate-400 uppercase font-bold tracking-wider">Additional Credits</span>
-                        <span className="font-semibold tabular-nums text-slate-700">
-                          {scenario.upsellCredits > 0 ? scenario.upsellCredits.toLocaleString() : <span className="italic text-slate-400">None</span>}
-                        </span>
-                      </div>
-                      <div className="pt-0.5">
-                        <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                          <span>{utilPercent.toFixed(0)}% forecasted usage</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                          <div className={`${tileBar} h-full`} style={{ width: `${Math.min(utilPercent, 100)}%` }} />
-                        </div>
-                      </div>
-                    </div>
+                    <p className="text-sm font-bold" style={{ color: tileTextColor }}>{scenario.name}</p>
                   </button>
                 );
               })}
             </div>
 
-            {/* RIGHT: full detail panel for selected scenario */}
+            {/* RIGHT: detail panel */}
             <div className="flex-1 min-w-0">
               {(() => {
                 const scenario = SCENARIOS.find((s) => s.id === selectedScenarioId)!;
@@ -544,29 +672,98 @@ export default function AICreditCalculatorPage() {
                   return {
                     productId: snap.productId,
                     name: product?.name ?? snap.productId,
-                    label: snap.label,
-                    note: snap.note,
+                    sub: product?.sub ?? "",
                     runs: snap.runs,
                     totalCredits: snap.runs * (product?.credits ?? 0),
+                    unitLabel: product?.unitLabel ?? "operations",
                   };
                 });
                 const forecastedCredits = displayProducts.reduce((sum, p) => sum + p.totalCredits, 0);
+
+                // Group products by product name
+                const grouped: { name: string; items: typeof displayProducts }[] = [];
+                const seen = new Map<string, number>();
+                displayProducts.forEach((p) => {
+                  if (seen.has(p.name)) {
+                    grouped[seen.get(p.name)!].items.push(p);
+                  } else {
+                    seen.set(p.name, grouped.length);
+                    grouped.push({ name: p.name, items: [p] });
+                  }
+                });
+
                 return (
-                  <ScenarioCard
-                    name={scenario.name}
-                    tagline={scenario.tagline}
-                    description={scenario.description}
-                    baseAllocation={scenario.baseAllocation}
-                    upsellCredits={scenario.upsellCredits}
-                    creditTierLabel={scenario.creditTier === "custom" ? "Custom" : CREDIT_TIERS[scenario.creditTier].label}
-                    users={scenario.users}
-                    tier={scenario.tier}
-                    accentColor={scenario.accentColor}
-                    products={displayProducts}
-                    forecastedCredits={forecastedCredits}
-                    byokNote={scenario.byokNote}
-                    onLoad={() => loadScenario(scenario)}
-                  />
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    {/* Intro */}
+                    <div className="px-6 py-5">
+                      <h2 className="text-xl font-bold mb-3" style={{ color: "#0D1F3A" }}>{scenario.name}</h2>
+                      <p className="text-sm text-slate-600 leading-relaxed">{scenario.description}</p>
+                    </div>
+
+                    {/* Hero Numbers */}
+                    <div className="px-6 py-5 border-t border-slate-100 bg-slate-50">
+                      <div className="grid grid-cols-2 gap-8">
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Base Allocation</p>
+                          <p className="text-2xl font-extrabold" style={{ color: "#0D1F3A" }}>{scenario.baseAllocation.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Forecasted Usage</p>
+                          <p className="text-2xl font-extrabold" style={{ color: "#6C40FF" }}>{forecastedCredits.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BYOK callout */}
+                    {scenario.byokNote && (
+                      <div className="mx-6 my-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-[11px] text-amber-800 font-medium leading-snug">
+                          <span className="font-bold">BYOK: </span>{scenario.byokNote}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Usage Model Summary */}
+                    <div className="border-t border-slate-100">
+                      <div className="px-6 pt-4 pb-1">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Usage Model Summary</span>
+                      </div>
+                      <div className="px-6 pb-5">
+                        <table className="w-full" style={{ maxWidth: "520px" }}>
+                          <tbody>
+                            {grouped.map(({ name, items }, gi) => (
+                              <Fragment key={name}>
+                                <tr>
+                                  <td colSpan={2} className={`text-xs font-bold pb-1 ${gi > 0 ? "pt-3" : ""}`} style={{ color: "#0D1F3A" }}>{name}</td>
+                                </tr>
+                                {items.map((p) => (
+                                  <tr key={p.productId}>
+                                    <td className="text-xs text-slate-500 py-0.5 pl-3">{p.sub}</td>
+                                    <td className="text-xs font-semibold tabular-nums text-right py-0.5 whitespace-nowrap" style={{ color: "#0D1F3A" }}>{p.runs.toLocaleString()} {p.unitLabel.toLowerCase()}</td>
+                                  </tr>
+                                ))}
+                              </Fragment>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="px-6 py-5 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => loadScenario(scenario)}
+                        className="w-full text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+                        style={{ backgroundColor: "#6C40FF" }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+                        </svg>
+                        Model this scenario
+                      </button>
+                    </div>
+                  </div>
                 );
               })()}
             </div>
@@ -606,7 +803,7 @@ export default function AICreditCalculatorPage() {
                 <div className="mt-4 space-y-1">
                   <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
                   <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-                    <span>Additional Consumption:</span>
+                    <span>Consumption Credits (Not in Pool):</span>
                     <span>+{overageCredits.toLocaleString()}</span>
                   </div>
                 </div>
@@ -637,7 +834,7 @@ export default function AICreditCalculatorPage() {
                   <label className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">Total Billing Forecast</label>
                   <div className="flex items-center">
                     <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
-                    <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-3xl font-extrabold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
                 <div className="mt-4 space-y-1">
@@ -646,11 +843,11 @@ export default function AICreditCalculatorPage() {
                     <span>Included</span>
                   </div>
                   <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
-                    <span className="opacity-70">Additional Credits:</span>
+                    <span className="opacity-70">Additional Credits Cost:</span>
                     <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-                    <span>Est. Consumption Billing:</span>
+                    <span>Consumption Cost:</span>
                     <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
@@ -663,24 +860,49 @@ export default function AICreditCalculatorPage() {
             {/* LEFT COLUMN: config cards + table */}
             <div className="flex-1 min-w-0 space-y-6">
 
-              {/* Monthly Credit Pool — full width */}
-              <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+              {/* Monthly Credit Pool + Number of Users — side by side */}
+              <div className="flex gap-6 items-stretch">
+
+              <div className="calculator-metric-card bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex-1">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                   Monthly Credit Pool
                 </label>
-                <div className="flex divide-x divide-slate-100">
+                {/* 5-column grid: [base] [+] [additional] [=] [total] */}
+                <div className="grid gap-x-3 items-start" style={{ gridTemplateColumns: "auto auto auto auto auto" }}>
 
-                  {/* Base Allocation */}
-                  <div className="flex-1 pr-8">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
-                      Base Allocation
-                      <span className="relative group inline-flex items-center">
-                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
-                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                          The number of credits included in this customer's plan tier.
-                        </span>
+                  {/* Row 1 — labels */}
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
+                    Base Allocation
+                    <span className="relative group inline-flex items-center">
+                      <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                        The number of credits included in this customer's plan tier.
                       </span>
-                    </p>
+                    </span>
+                  </p>
+                  <div /> {/* + label spacer */}
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
+                    Additional Credits
+                    <span className="relative group inline-flex items-center">
+                      <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                        Model an upsell of credits beyond the included base allocation to see the impact on billing.
+                      </span>
+                    </span>
+                  </p>
+                  <div /> {/* = label spacer */}
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
+                    Total Pool
+                    <span className="relative group inline-flex items-center">
+                      <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                        The total credits available: base allocation plus any additional credits purchased.
+                      </span>
+                    </span>
+                  </p>
+
+                  {/* Row 2 — values + operators */}
+                  <div>
                     {selectedTier === "custom" ? (
                       <input
                         type="text"
@@ -695,32 +917,9 @@ export default function AICreditCalculatorPage() {
                     ) : (
                       <p className="text-2xl font-bold text-slate-800 tabular-nums">{baseAllocation.toLocaleString()}</p>
                     )}
-                    <div className="mt-2">
-                      <select
-                        id="credit-tier-select"
-                        value={selectedTier}
-                        onChange={onTierChange}
-                        className="border border-slate-200 bg-slate-50 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
-                      >
-                        {(Object.entries(CREDIT_TIERS) as [CreditTier, { label: string; base: number }][]).map(([key, t]) => (
-                          <option key={key} value={key}>{t.label}</option>
-                        ))}
-                        <option value="custom">Custom</option>
-                      </select>
-                    </div>
                   </div>
-
-                  {/* Additional Credits (upsell) */}
-                  <div className="flex-1 px-8">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
-                      Additional Credits
-                      <span className="relative group inline-flex items-center">
-                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
-                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                          Model an upsell of credits beyond the included base allocation to see the impact on billing.
-                        </span>
-                      </span>
-                    </p>
+                  <span className="text-2xl font-bold text-slate-400 flex items-center h-10">+</span>
+                  <div className="w-56">
                     <input
                       id="upsell-credits-input"
                       type="text"
@@ -732,23 +931,60 @@ export default function AICreditCalculatorPage() {
                       placeholder="0"
                     />
                   </div>
+                  <span className="text-2xl font-bold text-slate-400 flex items-center h-10">=</span>
+                  <p className="text-2xl font-bold tabular-nums flex items-center h-10" style={{ color: "#6C40FF" }}>{totalCredits.toLocaleString()}</p>
 
-                  {/* Total Pool */}
-                  <div className="flex-1 pl-8">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1">
-                      Total Pool
-                      <span className="relative group inline-flex items-center">
-                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
-                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                          The total credits available: base allocation plus any additional credits purchased.
-                        </span>
-                      </span>
-                    </p>
-                    <p className="text-2xl font-bold text-slate-800 tabular-nums">{totalCredits.toLocaleString()}</p>
+                  {/* Row 3 — tier dropdown under Base Allocation */}
+                  <div className="mt-2">
+                    <select
+                      id="credit-tier-select"
+                      value={selectedTier}
+                      onChange={onTierChange}
+                      className="border border-slate-200 bg-slate-50 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
+                    >
+                      {(Object.entries(CREDIT_TIERS) as [CreditTier, { label: string; base: number }][]).map(([key, t]) => (
+                        <option key={key} value={key}>{t.label}</option>
+                      ))}
+                      <option value="custom">Custom</option>
+                    </select>
                   </div>
+                  <div /><div /><div /><div />
 
                 </div>
+
+              </div>{/* end Monthly Credit Pool card */}
+
+              {/* Number of Users — inline with Monthly Credit Pool */}
+              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 w-56 shrink-0">
+                <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Number of Users
+                  <span className="relative group inline-flex items-center">
+                    <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                      An optional input to estimate how credits could be distributed across your team.
+                    </span>
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={numberOfUsers}
+                  onChange={(e) => setNumberOfUsers(Math.max(0, Number(e.target.value) || 0))}
+                  className="text-2xl font-bold text-slate-800 w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
+                  aria-label="Number of users"
+                />
+                <div className="mt-3">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-slate-400">
+                    <span>Credits Per User:</span>
+                    <span className="text-slate-800 tabular-nums">
+                      {creditsPerUser != null ? creditsPerUser.toLocaleString() : "—"}
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              </div>{/* end top row flex */}
 
             {/* Product table — inside left column */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -760,9 +996,9 @@ export default function AICreditCalculatorPage() {
                     <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${totalUtilPercent > 100.1 ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200" : "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"}`}>
                       Total Pool Used: {totalUtilPercent.toFixed(1)}%
                     </span>
-                    <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
+                    <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-[#6C40FF] hover:bg-[#5B33D6] text-white rounded-lg text-xs font-bold transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
-                      Summarize
+                      Generate Summary
                     </button>
                   </div>
                 </div>
@@ -781,9 +1017,9 @@ export default function AICreditCalculatorPage() {
                     <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${totalUtilPercent > 100.1 ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200" : "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200"}`}>
                       Total Pool Used: {totalUtilPercent.toFixed(1)}%
                     </span>
-                    <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
+                    <button type="button" onClick={generateSummary} className="flex items-center gap-2 px-4 py-1.5 bg-[#6C40FF] hover:bg-[#5B33D6] text-white rounded-lg text-xs font-bold transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
-                      Summarize
+                      Generate Summary
                     </button>
                   </div>
                 </div>
@@ -793,7 +1029,7 @@ export default function AICreditCalculatorPage() {
               <table className="w-full text-left border-separate border-spacing-0" style={{ tableLayout: "fixed" }} id="mainTable">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 border-b border-slate-200 shadow-sm text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4 bg-slate-50 w-[12%] border-b border-slate-200">
+                    <th className="p-4 bg-slate-50 w-[10%] border-b border-slate-200">
                       <div className="relative flex items-center gap-1.5" ref={featureFilterRef}>
                         <span>Feature</span>
                         <button
@@ -845,8 +1081,8 @@ export default function AICreditCalculatorPage() {
                         )}
                       </div>
                     </th>
-                    <th className="p-4 bg-slate-50 w-[28%] border-b border-slate-200">Use Case</th>
-                    <th className={`p-4 bg-slate-50 w-[18%] border-b border-slate-200 text-center transition-colors ${isEditingConsumption ? "text-indigo-600" : ""}`}>
+                    <th className="p-4 bg-slate-50 w-[33%] border-b border-slate-200">Use Case</th>
+                    <th className={`p-4 bg-slate-50 w-[17%] border-b border-slate-200 text-center transition-colors ${isEditingConsumption ? "text-indigo-600" : ""}`}>
                       <div className="flex items-center justify-center gap-2">
                         <span>Average Consumption</span>
                         {showLegacyUi && (
@@ -856,7 +1092,7 @@ export default function AICreditCalculatorPage() {
                         )}
                       </div>
                     </th>
-                    <th className="p-4 bg-slate-50 w-1/4 text-center border-b border-slate-200">
+                    <th className="p-4 bg-slate-50 w-[22%] text-center border-b border-slate-200">
                       <div className="flex items-center justify-center gap-2">
                         <span>Est. Monthly Volume</span>
                         <button type="button" onClick={resetAllRuns} title="Reset all volumes to 0" className="p-1 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-indigo-600 focus:outline-none">
@@ -864,7 +1100,7 @@ export default function AICreditCalculatorPage() {
                         </button>
                       </div>
                     </th>
-                    <th className="p-4 bg-slate-50 w-1/4 text-right border-b border-slate-200">Utilization %</th>
+                    <th className="p-4 bg-slate-50 w-[18%] text-right border-b border-slate-200">Utilization %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1009,44 +1245,14 @@ export default function AICreditCalculatorPage() {
           {/* RIGHT SIDEBAR — sticky results */}
           <div className="w-full lg:w-72 shrink-0 lg:sticky lg:top-6 space-y-4">
 
-            {/* Number of Users */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                Number of Users
-                <span className="relative group inline-flex items-center">
-                  <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                    An optional input to estimate how credits could be distributed across your team.
-                  </span>
-                </span>
-              </label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={numberOfUsers}
-                onChange={(e) => setNumberOfUsers(Math.max(0, Number(e.target.value) || 0))}
-                className="text-2xl font-bold text-slate-800 w-full bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
-                aria-label="Number of users"
-              />
-              <div className="mt-3">
-                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-slate-400">
-                  <span>Credits Per User:</span>
-                  <span className="text-slate-800 tabular-nums">
-                    {creditsPerUser != null ? creditsPerUser.toLocaleString() : "—"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
             {/* Projected Usage */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between" style={{ minHeight: "170px" }}>
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Projected Usage
                 <span className="relative group inline-flex items-center">
                   <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
                   <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                    The total credits consumed by the volumes entered in the table. Additional Consumption shows credits used beyond the base allocation.
+                    The total credits consumed by the volumes entered in the table. Consumption Credits shows credits used beyond the total pool.
                   </span>
                 </span>
               </label>
@@ -1054,26 +1260,27 @@ export default function AICreditCalculatorPage() {
               <div className="mt-3 space-y-1">
                 <p className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Total Volume Credits</p>
                 <div className={`flex justify-between items-center text-xs font-bold uppercase tracking-tighter transition-colors duration-300 ${overageCredits > 0 ? "text-rose-500" : "text-slate-400"}`}>
-                  <span>Additional Consumption:</span>
+                  <span>Consumption Credits (Not in Pool):</span>
                   <span>+{overageCredits.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
             {/* Total Billing Forecast */}
-            <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white">
-              <label className="flex items-center gap-1 text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">
+            <div className="bg-indigo-600 p-5 rounded-xl shadow-lg border border-indigo-700 text-white relative overflow-hidden">
+              <div className="absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-300" style={{ backgroundColor: "#EBFBF5", opacity: flashForecast ? 0.25 : 0 }} />
+              <label className="relative flex items-center gap-1 text-xs font-semibold text-indigo-100 uppercase tracking-wider mb-1">
                 Total Billing Forecast
                 <span className="relative group inline-flex items-center">
                   <span className="cursor-default text-[9px] text-indigo-200 border border-indigo-400 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-indigo-500 transition-colors">?</span>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
-                    Estimated total cost based on the additional credits purchased and any overage consumption beyond the credit pool.
+                  <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                    Estimated total cost based on the additional credits purchased and any consumption beyond the credit pool.
                   </span>
                 </span>
               </label>
               <div className="flex items-center">
                 <span className="text-xl font-semibold text-indigo-200 mr-1">$</span>
-                <span className="text-3xl font-bold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-3xl font-extrabold">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="mt-4 space-y-1">
                 <div className="flex justify-between text-xs uppercase font-bold tracking-tighter opacity-70">
@@ -1081,18 +1288,28 @@ export default function AICreditCalculatorPage() {
                   <span>Included</span>
                 </div>
                 <div className="flex justify-between text-xs uppercase font-bold tracking-tighter">
-                  <span className="opacity-70">Additional Credits:</span>
+                  <span className="opacity-70">Additional Credits Cost:</span>
                   <span>${subscriptionCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className={`flex justify-between text-xs uppercase font-bold tracking-tighter transition-all duration-300 ${overageCredits > 0 ? "text-amber-300 opacity-100" : "opacity-50"}`}>
-                  <span>Est. Consumption Billing:</span>
+                  <span>Consumption Cost:</span>
                   <span>${overageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
 
-            {/* Reset CTA */}
-            <div className="flex justify-end">
+            {/* Import / Export / Reset */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={exportConfig} className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export
+                </button>
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Import
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -1101,17 +1318,34 @@ export default function AICreditCalculatorPage() {
                   setNumberOfUsers(0);
                   setSelectedTier("custom");
                   setCustomBaseAllocation(0);
+                  setImportStatus(null);
                 }}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                 Reset
               </button>
             </div>
+            {importStatus && (
+              <p className={`text-xs font-medium transition-opacity ${importStatus.type === "success" ? "text-emerald-600" : "text-rose-600"}`}>
+                {importStatus.message}
+              </p>
+            )}
 
-            {/* Hidden pricing inputs — still drive math */}
+            {/* Hidden inputs */}
             <div className="hidden" aria-hidden="true">
               <input type="number" value={costPerCredit} step={0.0000001} onChange={(e) => setCostPerCredit(Number(e.target.value) || 0)} />
               <input type="number" value={overageRate} step={0.0000001} onChange={(e) => setOverageRate(Number(e.target.value) || 0)} />
+              <input
+                type="file"
+                accept=".json"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importConfig(f);
+                  e.target.value = "";
+                }}
+              />
             </div>
 
           </div>
@@ -1145,24 +1379,24 @@ export default function AICreditCalculatorPage() {
       {/* Summary modal */}
       <div className={`fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center px-4 transition-opacity duration-200 ${summaryModal ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center text-white" style={{ backgroundColor: "#6C40FF" }}>
             <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
-              Utilization Talk Track
+              AI Credit Summary
             </h3>
             <button type="button" onClick={() => setSummaryModal(false)} className="text-white/80 hover:text-white transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
-          <div className="p-8 max-h-[70vh] overflow-y-auto bg-slate-50">
-            <p className="text-sm text-slate-500 mb-6 italic">
-              Use the talk track below to help explain what can be done at various credit levels and use cases. Please note that these numbers are examples and that usage will vary based on users&apos; actual inputs and outputs.
+          <div className="p-8 max-h-[70vh] overflow-y-auto">
+            <p className="text-xs text-slate-400 mb-5 italic">
+              Credit consumption estimates are based on typical usage patterns and will vary depending on content length and task complexity.
             </p>
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm" dangerouslySetInnerHTML={{ __html: summaryHtml }} />
+            <div dangerouslySetInnerHTML={{ __html: summaryHtml }} />
           </div>
-          <div className="p-4 bg-white border-t border-slate-100 flex justify-end gap-3">
-            <button type="button" onClick={copySummary} className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-bold transition-colors">{copyButtonText}</button>
-            <button type="button" onClick={() => setSummaryModal(false)} className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold transition-colors">Close</button>
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+            <button type="button" onClick={copySummary} className="px-4 py-2 rounded-lg text-sm font-bold transition-colors hover:bg-[#EBE5FF]" style={{ color: "#6C40FF" }}>{copyButtonText}</button>
+            <button type="button" onClick={() => setSummaryModal(false)} className="px-6 py-2 text-white rounded-lg text-sm font-bold transition-colors" style={{ backgroundColor: "#6C40FF" }}>Close</button>
           </div>
         </div>
       </div>

@@ -25,42 +25,11 @@ interface ScenarioCardProps {
   onLoad: () => void;
 }
 
-const accentStyles = {
-  indigo: {
-    header: "bg-indigo-600 text-white",
-    tagText: "text-indigo-200",
-    badge: "bg-indigo-100 text-indigo-700 ring-indigo-200",
-    button: "bg-indigo-600 hover:bg-indigo-700",
-    utilBar: "bg-indigo-500",
-  },
-  violet: {
-    header: "bg-violet-600 text-white",
-    tagText: "text-violet-200",
-    badge: "bg-violet-100 text-violet-700 ring-violet-200",
-    button: "bg-violet-600 hover:bg-violet-700",
-    utilBar: "bg-violet-500",
-  },
-  emerald: {
-    header: "bg-emerald-600 text-white",
-    tagText: "text-emerald-200",
-    badge: "bg-emerald-100 text-emerald-700 ring-emerald-200",
-    button: "bg-emerald-600 hover:bg-emerald-700",
-    utilBar: "bg-emerald-500",
-  },
-  amber: {
-    header: "bg-amber-500 text-white",
-    tagText: "text-amber-100",
-    badge: "bg-amber-100 text-amber-700 ring-amber-200",
-    button: "bg-amber-500 hover:bg-amber-600",
-    utilBar: "bg-amber-400",
-  },
-};
-
-const tierLabels = {
-  power: "Power Customer",
-  mid: "Mid-Tier",
-  byok: "BYOK",
-  grow: "X3/Grow",
+const brandColors: Record<string, { headerBg: string; headerText: string; tagText: string; utilBar: string }> = {
+  indigo:  { headerBg: "#EBE5FF", headerText: "#6C40FF", tagText: "#8B6AFF", utilBar: "bg-[#6C40FF]" },
+  violet:  { headerBg: "#E7F0FF", headerText: "#2563EB", tagText: "#60A5FA", utilBar: "bg-blue-500" },
+  emerald: { headerBg: "#EBFBF5", headerText: "#059669", tagText: "#34D399", utilBar: "bg-emerald-500" },
+  amber:   { headerBg: "#FFF4E4", headerText: "#B45309", tagText: "#F59E0B", utilBar: "bg-amber-400" },
 };
 
 export default function ScenarioCard({
@@ -78,41 +47,27 @@ export default function ScenarioCard({
   byokNote,
   onLoad,
 }: ScenarioCardProps) {
-  const styles = accentStyles[accentColor];
+  const colors = brandColors[accentColor];
   const totalPool = baseAllocation + upsellCredits;
   const utilPercent = totalPool > 0 ? (forecastedCredits / totalPool) * 100 : 0;
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
       {/* Header */}
-      <div className={`${styles.header} px-5 py-4`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-lg font-bold leading-tight">{name}</h3>
-            <p className={`text-xs mt-1 ${styles.tagText}`}>{tagline}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onLoad}
-            className="shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors text-white text-[11px] font-bold px-3 py-1.5 rounded-lg mt-0.5"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-            </svg>
-            Load Scenario
-          </button>
-        </div>
+      <div className="px-5 py-4" style={{ backgroundColor: colors.headerBg }}>
+        <h3 className="text-lg font-bold leading-tight" style={{ color: colors.headerText }}>{name}</h3>
+        <p className="text-xs mt-1" style={{ color: colors.tagText }}>{tagline}</p>
       </div>
 
       {/* Key stats */}
       <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50">
         <div>
           <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Base Allocation</p>
-          <p className="text-base font-bold text-slate-800 tabular-nums">{baseAllocation.toLocaleString()}</p>
+          <p className="text-base font-bold tabular-nums" style={{ color: "#0D1F3A" }}>{baseAllocation.toLocaleString()}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">{creditTierLabel}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Additional Purchased Credits</p>
-          <p className="text-base font-bold text-slate-800 tabular-nums">
+          <p className="text-base font-bold tabular-nums" style={{ color: "#0D1F3A" }}>
             {upsellCredits > 0 ? upsellCredits.toLocaleString() : <span className="font-normal italic text-slate-400">None</span>}
           </p>
           <p className="text-[10px] text-slate-400 mt-0.5">Users: {users}</p>
@@ -123,14 +78,14 @@ export default function ScenarioCard({
       <div className="px-5 py-3 border-b border-slate-100">
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Forecasted Usage</span>
-          <span className="text-xs font-bold text-slate-700 tabular-nums">
+          <span className="text-xs font-bold tabular-nums" style={{ color: "#0D1F3A" }}>
             {forecastedCredits.toLocaleString()} <span className="font-normal text-slate-400">credits</span>
             <span className="ml-1.5 text-slate-400">({utilPercent.toFixed(0)}%)</span>
           </span>
         </div>
         <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
           <div
-            className={`${styles.utilBar} h-full transition-all duration-300`}
+            className={`${colors.utilBar} h-full transition-all duration-300`}
             style={{ width: `${Math.min(utilPercent, 100)}%` }}
           />
         </div>
@@ -159,7 +114,7 @@ export default function ScenarioCard({
           {products.map((p) => (
             <li key={p.productId} className="flex items-start justify-between gap-2 text-xs">
               <div className="min-w-0">
-                <span className="font-semibold text-slate-700">{p.label ?? p.name}</span>
+                <span className="font-semibold" style={{ color: "#0D1F3A" }}>{p.label ?? p.name}</span>
                 {p.note && <span className="text-slate-400 ml-1">· {p.note}</span>}
               </div>
               <div className="text-right shrink-0 text-slate-500 tabular-nums">
@@ -168,6 +123,21 @@ export default function ScenarioCard({
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Start Modeling button */}
+      <div className="px-5 pb-5">
+        <button
+          type="button"
+          onClick={onLoad}
+          className="w-full text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 hover:opacity-90"
+          style={{ backgroundColor: "#6C40FF" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+          </svg>
+          Start Modeling with this Scenario
+        </button>
       </div>
 
     </div>
