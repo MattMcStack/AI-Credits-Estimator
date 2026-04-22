@@ -140,7 +140,7 @@ const SCENARIOS: Scenario[] = [
     name: "Net-New Customer",
     cardLine: "Included credits only — no upsell purchased",
     tagline: "15 users · 20M base allocation · no upsell",
-    description: "A net-new customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable with that starter footprint before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
+    description: "A net-new customer using only their included 20M base allocation — Polaris, Agents, Brand Kit, plus a steady volume of Agent and Automate executions. No additional credits purchased — this shows what's achievable with that starter footprint before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 0,
@@ -155,8 +155,9 @@ const SCENARIOS: Scenario[] = [
       { productId: "polaris_trans", runs: 25,  note: "Localization" },
       { productId: "agent_seo",     runs: 100, note: "SEO automation" },
       { productId: "agent_trans",   runs: 30 },
+      { productId: "automate",      runs: 12000, note: "~400/day" },
     ],
-    // Forecasted total: 19,000,840 credits = 95.0% of 20M
+    // Forecasted total: 18,069,000 credits = 90.3% of 20M
   },
   {
     id: "power_customer",
@@ -630,7 +631,7 @@ export default function AICreditCalculatorPage() {
     const remainingSection = remainingPool > 0 && remainingCapacityList ? `
       <div>
         <h4 style="font-size:13px;font-weight:700;color:#6C40FF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Remaining Capacity</h4>
-        <p style="font-size:12px;color:#6C40FF;font-weight:600;margin-bottom:8px">With ${remainingPool.toLocaleString()} credits remaining, you could still do one of the following:</p>
+        <p style="font-size:12px;color:#6C40FF;font-weight:600;margin-bottom:8px">With ${remainingPool.toLocaleString()} credits remaining, you could still do <strong style="font-weight:800">ONE</strong> of the following:</p>
         <ul style="list-style:disc;padding-left:20px;font-size:13px;color:#334155">${remainingCapacityList}</ul>
       </div>
     ` : overageCredits > 0 ? `
@@ -669,9 +670,11 @@ export default function AICreditCalculatorPage() {
     <div className="max-w-screen-2xl mx-auto pb-12 p-4 md:p-8">
       {/* Header */}
       <header className="mb-6 border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
+        <div className="w-full min-w-0">
           <h1 className="text-3xl font-bold tracking-tight text-slate-800">AI Credit Estimator</h1>
-          <p className="text-slate-500 mt-2">Estimate AI credit usage and billing based on your customer's expected feature usage.</p>
+          <p className="mt-2 w-full max-w-full text-xs text-slate-500 md:text-sm lg:max-w-[calc(20rem+1.5rem+56rem)] xl:max-w-[calc(24rem+1.5rem+56rem)]">
+            Use this tool to estimate AI credits and billing based on anticipated feature usage. The example scenarios describe different customer types; select one to pre-fill the estimator.
+          </p>
         </div>
       </header>
 
@@ -708,11 +711,6 @@ export default function AICreditCalculatorPage() {
       {/* ── Example Scenarios tab ─────────────────────────────────────────── */}
       {activeTab === "scenarios" && (
         <div>
-          <div className="mb-6">
-            <p className="text-sm text-slate-500">
-              Example customer scenarios showing how different types of customers might use and consume AI credits. Load any scenario into the estimator as a starting point.
-            </p>
-          </div>
           <div className="flex flex-col lg:flex-row gap-6 items-start">
 
             {/* LEFT: master navigation list */}
@@ -794,16 +792,25 @@ export default function AICreditCalculatorPage() {
                       <p className="text-sm text-slate-600 leading-relaxed">{scenario.description}</p>
                     </div>
 
-                    {/* Hero Numbers */}
+                    {/* Hero Numbers — pool (left) + forecast (right); equation under pool total */}
                     <div className="px-6 py-5 border-t border-slate-100 bg-slate-50">
                       <div className="grid grid-cols-2 gap-8">
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Base Allocation</p>
-                          <p className="text-2xl font-extrabold" style={{ color: "#0D1F3A" }}>{scenario.baseAllocation.toLocaleString()}</p>
+                        <div className="min-w-0 text-left">
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Total Credit Pool</p>
+                          <p className="text-2xl font-extrabold tabular-nums" style={{ color: "#0D1F3A" }}>
+                            {(scenario.baseAllocation + scenario.upsellCredits).toLocaleString()}
+                          </p>
+                          <p className="mt-2 text-[10px] leading-snug text-slate-500 tabular-nums">
+                            {scenario.upsellCredits > 0
+                              ? `${scenario.baseAllocation.toLocaleString()}(base) + ${scenario.upsellCredits.toLocaleString()}(purchased)`
+                              : "Base only"}
+                          </p>
                         </div>
-                        <div>
+                        <div className="flex min-w-0 flex-col items-end text-right">
                           <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Forecasted Usage</p>
-                          <p className="text-2xl font-extrabold" style={{ color: "#6C40FF" }}>{forecastedCredits.toLocaleString()}</p>
+                          <p className="text-2xl font-extrabold tabular-nums" style={{ color: "#6C40FF" }}>
+                            {forecastedCredits.toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     </div>
