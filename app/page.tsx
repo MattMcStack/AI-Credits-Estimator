@@ -23,6 +23,8 @@ type Product = {
   promptText?: string;
   /** "one_time" products (e.g. Assets) show a badge indicating non-recurring cost */
   activityType?: "recurring" | "one_time";
+  /** Fixed credits charged per run/execution (same pill style as one-time badge) */
+  fixedCreditCost?: boolean;
   /** When true, the Monthly Volume cell renders a frequency dropdown */
   isFrequencyProduct?: boolean;
   frequencyMode?: FrequencyMode;
@@ -42,6 +44,7 @@ type ScenarioProductSnapshot = {
 type Scenario = {
   id: string;
   name: string;
+  cardLine: string;
   tagline: string;
   description: string;
   creditTier: CreditTier;
@@ -94,6 +97,22 @@ const FREQUENCY_MULTIPLIERS: Record<FrequencyMode, number> = {
 };
 
 const INITIAL_PRODUCTS: Product[] = [
+  { id: "agent_seo", name: "Agents", sub: "Analyze an entry and update SEO tags", credits: 35000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
+  { id: "agent_story", name: "Agents", sub: "Research & generate 5 story ideas", credits: 330000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
+  { id: "agent_trans", name: "Agents", sub: "Translate an entry upon workflow stage change", credits: 50000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that translates an entry into 3 languages when it hits 'Translate' workflow stage.", action: "Orchestrate translations for" },
+  {
+    id: "automate",
+    name: "Agents / Automate",
+    sub: "One agent or automate execution",
+    credits: 150,
+    fixedCreditCost: true,
+    runs: 0,
+    unitLabel: "Executions",
+    action: "Run",
+    isFrequencyProduct: true,
+    frequencyMode: "per_month",
+    rawFrequencyInput: 0,
+  },
   {
     id: "assets",
     name: "Assets",
@@ -103,38 +122,25 @@ const INITIAL_PRODUCTS: Product[] = [
     unitLabel: "Images",
     action: "Upload and generate metadata for",
     activityType: "one_time",
+    fixedCreditCost: true,
   },
-  {
-    id: "automate",
-    name: "Automate",
-    sub: "One Execution with Multiple Steps",
-    credits: 150,
-    runs: 0,
-    unitLabel: "Executions",
-    action: "Run",
-    isFrequencyProduct: true,
-    frequencyMode: "per_month",
-    rawFrequencyInput: 0,
-  },
-  { id: "brandkit_web", name: "Brand Kit", sub: "Knowledge Vault ingestion from website url (per web page)", credits: 5200, runs: 0, unitLabel: "Web Pages", action: "Vault" },
   { id: "brandkit_pdf", name: "Brand Kit", sub: "Knowledge Vault file ingestion (per page)", credits: 400, runs: 0, unitLabel: "PDF Pages", action: "Vault" },
-  { id: "studio_comp", name: "Visual Studio", sub: "Convert Figma Design to Studio Component", credits: 54000, runs: 0, unitLabel: "Studio Components", action: "Generate" },
-  { id: "react_comp", name: "Visual Studio", sub: "Convert Figma Design to React Component", credits: 80000, runs: 0, unitLabel: "React Components", action: "Export" },
-  { id: "polaris_art", name: "Polaris", sub: "Create an Article with SEO and Change Workflow Status", credits: 50000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Create a new 'page' entry about the Joys of Staying at the Red Panda. Add appropriate metadata and SEO tags and put it in the 'Review' workflow stage.", action: "Generate" },
+  { id: "brandkit_web", name: "Brand Kit", sub: "Knowledge Vault ingestion from website url (per web page)", credits: 5200, runs: 0, unitLabel: "Web Pages", action: "Vault" },
   { id: "polaris_rel", name: "Polaris", sub: "Add entry to release and deploy", credits: 75000, runs: 0, unitLabel: "Prompts", summaryUnit: "Releases", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Take the last entry that was created and add it to the latest release. Then, deploy the release.", action: "Manage" },
+  { id: "polaris_art", name: "Polaris", sub: "Create an Article with SEO and Change Workflow Status", credits: 50000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Create a new 'page' entry about the Joys of Staying at the Red Panda. Add appropriate metadata and SEO tags and put it in the 'Review' workflow stage.", action: "Generate" },
   { id: "polaris_trans", name: "Polaris", sub: "Translate an Article from English to French", credits: 85000, runs: 0, unitLabel: "Prompts", summaryUnit: "Articles into another language", hasPrompt: true, promptTitle: "Example Prompt", promptText: "Translate this entry into French.", action: "Translate" },
-  { id: "agent_story", name: "Custom Agents", sub: "Research & generate 5 story ideas", credits: 330000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
-  { id: "agent_seo", name: "Custom Agents", sub: "Analyze an entry and update SEO tags", credits: 35000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
-  { id: "agent_trans", name: "Custom Agents", sub: "Translate an entry upon workflow stage change", credits: 50000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that translates an entry into 3 languages when it hits 'Translate' workflow stage.", action: "Orchestrate translations for" },
+  { id: "react_comp", name: "Visual Studio", sub: "Convert Figma Design to React Component", credits: 80000, runs: 0, unitLabel: "React Components", action: "Export" },
+  { id: "studio_comp", name: "Visual Studio", sub: "Convert Figma Design to Studio Component", credits: 54000, runs: 0, unitLabel: "Studio Components", action: "Generate" },
 ];
 
 // Scenario credit volumes calibrated so each scenario uses ~91–97% of its pool.
 const SCENARIOS: Scenario[] = [
   {
     id: "grow_base_only",
-    name: "X3/Grow — Base only",
+    name: "X3/Grow — Base allocation only",
+    cardLine: "Included credits only — no upsell purchased",
     tagline: "15 users · 20M base allocation · no upsell",
-    description: "An existing X3/Grow customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable at the Grow tier before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
+    description: "An existing X3/Grow customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable at this tier before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 0,
@@ -155,8 +161,9 @@ const SCENARIOS: Scenario[] = [
   {
     id: "power_customer",
     name: "Enterprise — Heavy Usage",
+    cardLine: "Full platform — sustained, daily usage",
     tagline: "100 users · 500M credits · full platform",
-    description: "A large enterprise team using Contentstack AI at high daily volume across Polaris, Custom Agents, Brand Kit, Automate, and Assets. Polaris handles content creation, translation, and releases. Custom Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, and Automate orchestrates the workflows that tie it all together.",
+    description: "A large enterprise team using Contentstack AI at high daily volume across Polaris, Agents, Brand Kit, Automate, and Assets. Polaris handles content creation, translation, and releases. Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, and Automate orchestrates the workflows that tie it all together.",
     creditTier: "scale",
     baseAllocation: 50_000_000,
     upsellCredits: 450_000_000,
@@ -179,8 +186,9 @@ const SCENARIOS: Scenario[] = [
   {
     id: "mid_tier",
     name: "Growing Content Team",
+    cardLine: "Mid-size team — Editorial workflow + automation",
     tagline: "25 users · 30M credits · focused toolset",
-    description: "A growing content team focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Custom Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Studio usage in this profile.",
+    description: "A growing content team focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Studio usage in this profile.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 10_000_000,
@@ -200,15 +208,16 @@ const SCENARIOS: Scenario[] = [
   {
     id: "byok",
     name: "BYOK Customer",
+    cardLine: "Own LLM Keys — platform services still bill",
     tagline: "10M credits · brings own AI keys",
-    description: "This customer uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris and Custom Agents consume zero Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
+    description: "This customer uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris and Agents don't consume Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate & Agent Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
     creditTier: "start",
     baseAllocation: 10_000_000,
     upsellCredits: 0,
     users: 10,
     tier: "byok",
     accentColor: "emerald",
-    byokNote: "Polaris and Custom Agents use your own LLM keys — no Contentstack credits consumed for these features.",
+    byokNote: "Polaris and Agents use your own LLM keys — no Contentstack credits consumed for these features.",
     products: [
       { productId: "automate",     runs: 6000, note: "~200/day", label: "Automate Executions" },
       { productId: "brandkit_web", runs: 200,  note: "KV ingestion via web", label: "Brand Kit — Web Ingestion" },
@@ -225,7 +234,7 @@ function buildPhrasing(product: Product, value: number, isCapacity: boolean) {
   const p = isCapacity ? "up to " : "";
   switch (product.id) {
     case "assets": return `Upload and generate metadata for ${p}${valStr} images.`;
-    case "automate": return `Run ${p}${valStr} Automate executions.`;
+    case "automate": return `Run ${p}${valStr} agent or Automate executions.`;
     case "brandkit_web": return `Ingest ${p}${valStr} web pages into Knowledge Vault.`;
     case "brandkit_pdf": return `Ingest ${p}${valStr} PDF pages into Knowledge Vault.`;
     case "studio_comp": return `Convert ${p}${valStr} Figma designs to Studio components.`;
@@ -719,6 +728,7 @@ export default function AICreditCalculatorPage() {
                     style={{ backgroundColor: tileBg }}
                   >
                     <p className="text-sm font-bold leading-snug" style={{ color: tileTextColor }}>{scenario.name}</p>
+                    <p className="mt-1 text-[11px] leading-snug text-slate-600">{scenario.cardLine}</p>
                     <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Features in this scenario">
                       {featureBadges.map((label) => (
                         <span
@@ -1054,7 +1064,7 @@ export default function AICreditCalculatorPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
                   <div className="min-w-0 flex-1">
                     <h2 className="text-xl font-semibold text-slate-800">Credit Usage Modeling</h2>
                     <p className="text-xs text-slate-400 italic mt-1.5 leading-snug">
@@ -1156,6 +1166,7 @@ export default function AICreditCalculatorPage() {
                     const additionalPossible = p.credits > 0 ? Math.floor(remainingPool / p.credits) : 0;
                     const dynamicMax = p.runs + additionalPossible;
                     const barColor = featureUtilPercent > 100 ? "bg-rose-500" : featureUtilPercent > 50 ? "bg-amber-500" : "bg-indigo-500";
+                    const consumptionIsFixed = p.id === "assets" || p.id === "automate";
                     return (
                       <tr key={p.id} className="product-row border-b border-slate-50 hover:bg-slate-50/80">
                         {/* Feature */}
@@ -1174,13 +1185,25 @@ export default function AICreditCalculatorPage() {
                                 </button>
                               )}
                             </div>
-                            {p.activityType === "one_time" && (
-                              <span
-                                className="mt-1.5 self-start bg-amber-50 text-amber-700 ring-1 ring-amber-200 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                title="Typically processed once — not a recurring monthly cost. Volume here represents new images ingested in the period."
-                              >
-                                One-Time Activity
-                              </span>
+                            {(p.activityType === "one_time" || p.fixedCreditCost) && (
+                              <div className="mt-1.5 flex flex-row flex-wrap items-center gap-1.5 self-start">
+                                {p.fixedCreditCost && (
+                                  <span
+                                    className="bg-violet-50 text-violet-700 ring-1 ring-violet-200 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                    title="Each operation uses a fixed number of credits as shown in Average Consumption."
+                                  >
+                                    Fixed Credit Cost
+                                  </span>
+                                )}
+                                {p.activityType === "one_time" && (
+                                  <span
+                                    className="bg-amber-50 text-amber-700 ring-1 ring-amber-200 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                    title="Typically processed once — not a recurring monthly cost. Volume here represents new images ingested in the period."
+                                  >
+                                    One-Time Activity
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         </td>
@@ -1189,11 +1212,15 @@ export default function AICreditCalculatorPage() {
                         <td className={`p-4 align-top text-center transition-colors ${isEditingConsumption ? "bg-indigo-50/50" : ""}`}>
                           {!isEditingConsumption ? (
                             <div className="text-sm whitespace-nowrap">
-                              <span className="font-bold text-slate-800">{p.credits.toLocaleString()}</span>
+                              <span className="font-bold text-slate-800">
+                                {!consumptionIsFixed && <span className="text-slate-500">~</span>}
+                                {p.credits.toLocaleString()}
+                              </span>
                               <span className="ml-1 text-slate-400">Credits</span>
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-2">
+                              {!consumptionIsFixed && <span className="text-sm font-bold text-slate-500" aria-hidden="true">~</span>}
                               <input type="number" value={p.credits} onChange={(e) => updateProductCredits(index, Number(e.target.value) || 0)} className="consumption-input bg-white rounded-md px-2 py-1 w-full max-w-[120px] border border-slate-300 text-sm font-mono font-semibold focus:ring-1 focus:ring-indigo-500 outline-none" />
                               <span className="text-xs font-medium text-slate-400">Credits</span>
                             </div>
@@ -1315,6 +1342,7 @@ export default function AICreditCalculatorPage() {
                           {/* Average Consumption */}
                           <td className="p-4 align-top text-center">
                             <div className="flex items-center justify-center gap-2">
+                              <span className="text-sm font-bold text-slate-500" aria-hidden="true">~</span>
                               <input
                                 type="number"
                                 min={0}
