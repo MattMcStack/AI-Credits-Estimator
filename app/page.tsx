@@ -137,10 +137,10 @@ const INITIAL_PRODUCTS: Product[] = [
 const SCENARIOS: Scenario[] = [
   {
     id: "grow_base_only",
-    name: "X3/Grow — Base allocation only",
+    name: "Net-New Customer",
     cardLine: "Included credits only — no upsell purchased",
     tagline: "15 users · 20M base allocation · no upsell",
-    description: "An existing X3/Grow customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable at this tier before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
+    description: "A net-new customer using only their included 20M base allocation. No additional credits purchased — this shows what's achievable with that starter footprint before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 0,
@@ -290,6 +290,11 @@ export default function AICreditCalculatorPage() {
   // Derived credit pool values — base allocation is included in tier, upsell is billable
   const baseAllocation = selectedTier === "custom" ? customBaseAllocation : CREDIT_TIERS[selectedTier].base;
   const totalCredits = baseAllocation + upsellCredits;
+
+  const creditsPerUser = useMemo(() => {
+    if (numberOfUsers <= 0) return null;
+    return Math.floor(totalCredits / numberOfUsers);
+  }, [totalCredits, numberOfUsers]);
 
   const volumeCredits = useMemo(() => {
     const regular = products.reduce((sum, p) => sum + p.runs * p.credits, 0);
@@ -522,6 +527,13 @@ export default function AICreditCalculatorPage() {
     if (digits === "") { setUpsellCredits(0); return; }
     const n = Number.parseInt(digits, 10);
     if (!Number.isNaN(n)) setUpsellCredits(n);
+  }, []);
+
+  const onNumberOfUsersChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (digits === "") { setNumberOfUsers(0); return; }
+    const n = Number.parseInt(digits, 10);
+    if (!Number.isNaN(n)) setNumberOfUsers(n);
   }, []);
 
   const onMonthlyVolumeChange = useCallback((index: number, e: ChangeEvent<HTMLInputElement>) => {
@@ -947,10 +959,15 @@ export default function AICreditCalculatorPage() {
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                   Monthly Credit Pool
                 </label>
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch sm:gap-0">
+                  <div className="min-w-0 flex-1">
                 {/* 5 columns: Base | + | Additional | = | Total — 2fr content / 1fr operator so + and = sit in gutters, centered */}
                 <div
                   className="grid w-full items-start gap-x-3 sm:gap-x-4 md:gap-x-6"
-                  style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr)" }}
+                  style={{
+                    gridTemplateColumns:
+                      "minmax(17rem, 2.45fr) minmax(0, 1fr) minmax(17rem, 2.45fr) minmax(0, 1fr) minmax(12rem, 2.25fr)",
+                  }}
                 >
                   {/* Row 1 — labels */}
                   <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-1 flex items-center gap-1 justify-self-start text-left">
@@ -973,7 +990,7 @@ export default function AICreditCalculatorPage() {
                     </span>
                   </p>
                   <div className="min-h-[1.25rem]" aria-hidden />
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter mb-3 flex items-center gap-1 justify-self-end text-right">
+                  <p className="mb-3 flex items-center gap-1 justify-self-end text-right text-[10px] font-bold uppercase tracking-tighter text-slate-400">
                     Total Credit Pool
                     <span className="relative group inline-flex items-center shrink-0">
                       <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
@@ -984,7 +1001,7 @@ export default function AICreditCalculatorPage() {
                   </p>
 
                   {/* Row 2 — values + operators */}
-                  <div className="flex min-h-[2.875rem] items-center justify-start min-w-0 w-full">
+                  <div className="flex min-h-[2.875rem] w-full min-w-[17rem] items-center justify-start">
                     {selectedTier === "custom" ? (
                       <input
                         type="text"
@@ -992,18 +1009,18 @@ export default function AICreditCalculatorPage() {
                         autoComplete="off"
                         value={customBaseAllocation.toLocaleString("en-US")}
                         onChange={onCustomBaseChange}
-                        className="text-2xl font-bold text-slate-800 w-full max-w-full tabular-nums bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
+                        className="box-border min-w-[17rem] w-full max-w-full text-2xl font-bold tabular-nums text-slate-800 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
                         placeholder="0"
                         aria-label="Custom base allocation"
                       />
                     ) : (
-                      <p className="text-2xl font-bold text-slate-800 tabular-nums truncate">{baseAllocation.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-slate-800 tabular-nums whitespace-nowrap">{baseAllocation.toLocaleString()}</p>
                     )}
                   </div>
                   <div className="flex w-full min-w-0 items-center justify-center h-10 text-2xl font-bold text-slate-400 select-none" aria-hidden>
                     +
                   </div>
-                  <div className="flex min-h-[2.875rem] items-center justify-start min-w-0 w-full">
+                  <div className="flex min-h-[2.875rem] w-full min-w-[17rem] items-center justify-start">
                     <input
                       id="upsell-credits-input"
                       type="text"
@@ -1011,7 +1028,7 @@ export default function AICreditCalculatorPage() {
                       autoComplete="off"
                       value={upsellCredits.toLocaleString("en-US")}
                       onChange={onUpsellChange}
-                      className="text-2xl font-bold text-slate-800 w-full max-w-full tabular-nums text-left bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
+                      className="box-border min-w-[17rem] w-full max-w-full text-2xl font-bold tabular-nums text-left text-slate-800 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
                       placeholder="0"
                     />
                   </div>
@@ -1020,7 +1037,7 @@ export default function AICreditCalculatorPage() {
                   </div>
                   <div className="flex min-h-[2.875rem] w-full min-w-0 items-center justify-end">
                     <p
-                      className="text-2xl font-bold tabular-nums truncate rounded-lg border border-transparent px-3 py-1.5 leading-none"
+                      className="text-2xl font-bold tabular-nums whitespace-nowrap rounded-lg border border-transparent px-3 py-1.5 leading-none"
                       style={{ color: "#6C40FF" }}
                     >
                       {totalCredits.toLocaleString()}
@@ -1043,6 +1060,51 @@ export default function AICreditCalculatorPage() {
                   </div>
                   <div /><div /><div /><div />
 
+                </div>
+                  </div>
+
+                  <div className="h-px shrink-0 bg-slate-200 sm:hidden" aria-hidden />
+                  <div className="hidden sm:block w-px shrink-0 bg-slate-200 self-stretch mx-6 md:mx-8" aria-hidden />
+
+                  <div className="flex flex-col items-center shrink-0 w-full sm:w-44 md:w-48">
+                    <p className="mb-1 flex w-full items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-tighter text-slate-400">
+                      User Distribution
+                      <span className="relative group inline-flex items-center shrink-0">
+                        <span className="cursor-default text-[9px] text-slate-400 border border-slate-300 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center leading-none hover:bg-slate-100 transition-colors">?</span>
+                        <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 w-52 rounded-lg bg-slate-800 text-white text-[10px] leading-snug px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 font-normal normal-case tracking-normal shadow-lg">
+                          Even split of total credit pool across users for planning; does not change billing math.
+                        </span>
+                      </span>
+                    </p>
+                    <div className="flex min-h-[2.875rem] w-full items-center justify-center">
+                      <input
+                        id="user-count-input"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={numberOfUsers.toLocaleString("en-US")}
+                        onChange={onNumberOfUsersChange}
+                        className="w-full max-w-[7.5rem] text-2xl font-bold text-slate-800 tabular-nums text-left bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none transition-all"
+                        placeholder="0"
+                        aria-label="Number of users for credit distribution"
+                      />
+                    </div>
+                    <div
+                      className="mt-3 flex w-full flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5"
+                      role="status"
+                      aria-label={creditsPerUser != null ? `${creditsPerUser.toLocaleString()} credits per user` : "Enter a user count to see credits per user"}
+                    >
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">Credits per user</span>
+                      {creditsPerUser != null ? (
+                        <span className="text-[10px] font-bold tabular-nums tracking-tighter" style={{ color: "#6C40FF" }}>
+                          {creditsPerUser.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold tabular-nums text-slate-300 tracking-tighter">—</span>
+                      )}
+                    </div>
+                    <div className="mt-2 min-h-[1.75rem]" aria-hidden />
+                  </div>
                 </div>
 
               </div>{/* end Monthly Credit Pool card */}
@@ -1554,7 +1616,7 @@ export default function AICreditCalculatorPage() {
                   setCustomBaseAllocation(0);
                   setImportStatus(null);
                 }}
-                className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                className="mr-3 flex items-center gap-1 text-xs font-semibold text-slate-400 transition-colors hover:text-slate-700"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                 Reset
