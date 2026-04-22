@@ -11,7 +11,6 @@ interface ScenarioProductDisplay {
 
 interface ScenarioCardProps {
   name: string;
-  tagline: string;
   description: string;
   baseAllocation: number;
   upsellCredits: number;
@@ -25,16 +24,15 @@ interface ScenarioCardProps {
   onLoad: () => void;
 }
 
-const brandColors: Record<string, { headerBg: string; headerText: string; tagText: string; utilBar: string }> = {
-  indigo:  { headerBg: "#EBE5FF", headerText: "#6C40FF", tagText: "#8B6AFF", utilBar: "bg-[#6C40FF]" },
-  violet:  { headerBg: "#E7F0FF", headerText: "#2563EB", tagText: "#60A5FA", utilBar: "bg-blue-500" },
-  emerald: { headerBg: "#EBFBF5", headerText: "#059669", tagText: "#34D399", utilBar: "bg-emerald-500" },
-  amber:   { headerBg: "#FFF4E4", headerText: "#B45309", tagText: "#F59E0B", utilBar: "bg-amber-400" },
+const brandColors: Record<string, { headerBg: string; headerText: string; utilBar: string }> = {
+  indigo:  { headerBg: "#EBE5FF", headerText: "#6C40FF", utilBar: "bg-[#6C40FF]" },
+  violet:  { headerBg: "#E7F0FF", headerText: "#2563EB", utilBar: "bg-blue-500" },
+  emerald: { headerBg: "#EBFBF5", headerText: "#059669", utilBar: "bg-emerald-500" },
+  amber:   { headerBg: "#FFF4E4", headerText: "#B45309", utilBar: "bg-amber-400" },
 };
 
 export default function ScenarioCard({
   name,
-  tagline,
   description,
   baseAllocation,
   upsellCredits,
@@ -55,7 +53,6 @@ export default function ScenarioCard({
       {/* Header */}
       <div className="px-5 py-4" style={{ backgroundColor: colors.headerBg }}>
         <h3 className="text-lg font-bold leading-tight" style={{ color: colors.headerText }}>{name}</h3>
-        <p className="text-xs mt-1" style={{ color: colors.tagText }}>{tagline}</p>
       </div>
 
       {/* Key stats */}

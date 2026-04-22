@@ -45,7 +45,6 @@ type Scenario = {
   id: string;
   name: string;
   cardLine: string;
-  tagline: string;
   description: string;
   creditTier: CreditTier;
   baseAllocation: number;
@@ -139,8 +138,7 @@ const SCENARIOS: Scenario[] = [
     id: "grow_base_only",
     name: "Net-New Customer",
     cardLine: "Included credits only — no upsell purchased",
-    tagline: "15 users · 20M base allocation · no upsell",
-    description: "A net-new customer using only their included 20M base allocation — Polaris, Agents, Brand Kit, plus a steady volume of Agent and Automate executions. No additional credits purchased — this shows what's achievable with that starter footprint before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
+    description: "A net-new customer with 15 users, using only their included 20M base allocation — Polaris, Agents, Brand Kit, plus a steady volume of Agent and Automate executions. No additional credits purchased — this shows what's achievable with that starter footprint before any upsell. Load this into the calculator, then add Additional Credits to model the upsell opportunity.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 0,
@@ -163,8 +161,7 @@ const SCENARIOS: Scenario[] = [
     id: "power_customer",
     name: "Enterprise — Heavy Usage",
     cardLine: "Full platform — sustained, daily usage",
-    tagline: "100 users · 500M credits · full platform",
-    description: "A large enterprise team using Contentstack AI at high daily volume across Polaris, Agents, Brand Kit, Automate, and Assets. Polaris handles content creation, translation, and releases. Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, and Automate orchestrates the workflows that tie it all together.",
+    description: "A large enterprise team of 100 users runs Contentstack AI at high daily volume across Polaris, Agents, Brand Kit, Automate, and Assets. Polaris handles content creation, translation, and releases. Agents automate SEO tagging, translation workflows, and story ideation. Brand Kit maintains brand consistency, and Automate orchestrates the workflows that tie it all together.",
     creditTier: "scale",
     baseAllocation: 50_000_000,
     upsellCredits: 450_000_000,
@@ -188,8 +185,7 @@ const SCENARIOS: Scenario[] = [
     id: "mid_tier",
     name: "Growing Content Team",
     cardLine: "Mid-size team — Editorial workflow + automation",
-    tagline: "25 users · 30M credits · focused toolset",
-    description: "A growing content team focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Studio usage in this profile.",
+    description: "A growing content team of 25 users focused on content intelligence and brand consistency. They use Polaris for article creation and localization, Agents for SEO automation and translation workflows, and Brand Kit to keep their Knowledge Vault current. No Assets or Visual Studio usage in this profile.",
     creditTier: "grow",
     baseAllocation: 20_000_000,
     upsellCredits: 10_000_000,
@@ -210,15 +206,14 @@ const SCENARIOS: Scenario[] = [
     id: "byok",
     name: "BYOK Customer",
     cardLine: "Own LLM Keys — platform services still bill",
-    tagline: "10M credits · brings own AI keys",
-    description: "This customer uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris and Agents don't consume Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate & Agent Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
+    description: "A 10 user team that uses Bring Your Own Key (BYOK) — they supply their own LLM API keys, so AI-powered features like Polaris and Agents don't consume Contentstack credits. However, three activities still run on Contentstack's managed infrastructure and consume credits regardless of BYOK: Automate & Agent Executions, Brand Kit Knowledge Vault ingestion, and Assets metadata processing.",
     creditTier: "start",
     baseAllocation: 10_000_000,
     upsellCredits: 0,
     users: 10,
     tier: "byok",
     accentColor: "emerald",
-    byokNote: "Polaris and Agents use your own LLM keys — no Contentstack credits consumed for these features.",
+    byokNote: "Customer is using custom LLM Keys for Polaris and Agents.",
     products: [
       { productId: "automate",     runs: 6000, note: "~200/day", label: "Automate Executions" },
       { productId: "brandkit_web", runs: 200,  note: "KV ingestion via web", label: "Brand Kit — Web Ingestion" },
@@ -787,8 +782,7 @@ export default function AICreditCalculatorPage() {
                   <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
                     {/* Intro */}
                     <div className="px-6 py-5">
-                      <h2 className="text-xl font-bold mb-1.5 leading-tight" style={{ color: "#0D1F3A" }}>{scenario.name}</h2>
-                      <p className="text-xs text-slate-500 font-medium mb-3">{scenario.tagline}</p>
+                      <h2 className="text-xl font-bold mb-3 leading-tight" style={{ color: "#0D1F3A" }}>{scenario.name}</h2>
                       <p className="text-sm text-slate-600 leading-relaxed">{scenario.description}</p>
                     </div>
 
