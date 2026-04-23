@@ -121,7 +121,6 @@ const INITIAL_PRODUCTS: Product[] = [
     unitLabel: "Images",
     action: "Upload and generate metadata for",
     activityType: "one_time",
-    fixedCreditCost: true,
   },
   { id: "brandkit_pdf", name: "Brand Kit", sub: "Knowledge Vault file ingestion (per page)", credits: 400, runs: 0, unitLabel: "PDF Pages", action: "Vault" },
   { id: "brandkit_web", name: "Brand Kit", sub: "Knowledge Vault ingestion from website url (per web page)", credits: 5200, runs: 0, unitLabel: "Web Pages", action: "Vault" },
