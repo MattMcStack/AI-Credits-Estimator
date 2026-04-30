@@ -116,7 +116,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "assets",
     name: "Assets",
     sub: "Upload Image and Generate Metadata",
-    credits: 1000,
+    credits: 3000,
     runs: 0,
     unitLabel: "Images",
     action: "Upload and generate metadata for",
@@ -168,7 +168,7 @@ const SCENARIOS: Scenario[] = [
     tier: "power",
     accentColor: "indigo",
     products: [
-      { productId: "assets",       runs: 13000, note: "Initial image batch" },
+      { productId: "assets",       runs: 4333, note: "Initial image batch" },
       { productId: "automate",     runs: 6300,  note: "~210/day" },
       { productId: "brandkit_web", runs: 500,   note: "Brand vault maintenance" },
       { productId: "brandkit_pdf", runs: 2000,  note: "PDF brand content" },
@@ -217,7 +217,7 @@ const SCENARIOS: Scenario[] = [
       { productId: "automate",     runs: 6000, note: "~200/day", label: "Automate Executions" },
       { productId: "brandkit_web", runs: 200,  note: "KV ingestion via web", label: "Brand Kit — Web Ingestion" },
       { productId: "brandkit_pdf", runs: 2000, note: "KV ingestion via PDF", label: "Brand Kit — PDF Ingestion" },
-      { productId: "assets",       runs: 6500, note: "Metadata processing", label: "Assets" },
+      { productId: "assets",       runs: 2167, note: "Metadata processing", label: "Assets" },
     ],
   },
 ];
