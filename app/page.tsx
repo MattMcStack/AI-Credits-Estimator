@@ -96,9 +96,10 @@ const FREQUENCY_MULTIPLIERS: Record<FrequencyMode, number> = {
 };
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: "agent_seo", name: "Agents", sub: "Analyze an entry and update SEO tags", credits: 35000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
-  { id: "agent_story", name: "Agents", sub: "Research & generate 5 story ideas", credits: 330000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
-  { id: "agent_trans", name: "Agents", sub: "Translate an entry upon workflow stage change", credits: 50000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that translates an entry into 3 languages when it hits 'Translate' workflow stage.", action: "Orchestrate translations for" },
+  { id: "agent_seo", name: "Agents", sub: "SEO Metadata Generator Template", credits: 8000, runs: 0, unitLabel: "Runs", summaryUnit: "Articles", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes one article and adds SEO metadata.", action: "Automate SEO tagging for" },
+  { id: "agent_story", name: "Agents", sub: "Research & generate 5 story ideas", credits: 300000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Example Use Case", promptText: "Agent that analyzes site analytics, does research and creates 5 story ideas.", action: "special" },
+  { id: "agent_translation_drafting", name: "Agents", sub: "Translation Drafting Template", credits: 4000, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Translation Drafting Template", promptText: "On entry publish, translate one entry into one language.", action: "Translation Drafting runs" },
+  { id: "agent_compliance_checker", name: "Agents", sub: "Content Compliance Checker Template", credits: 4500, runs: 0, unitLabel: "Runs", hasPrompt: true, promptTitle: "Content Compliance Checker Template", promptText: "Returns a content compliance score for a single entry against a single voice profile.", action: "Content Compliance Checker runs" },
   {
     id: "automate",
     name: "Agents / Automate",
@@ -151,7 +152,6 @@ const SCENARIOS: Scenario[] = [
       { productId: "polaris_rel",   runs: 40 },
       { productId: "polaris_trans", runs: 25,  note: "Localization" },
       { productId: "agent_seo",     runs: 100, note: "SEO automation" },
-      { productId: "agent_trans",   runs: 30 },
       { productId: "automate",      runs: 12000, note: "~400/day" },
     ],
     // Forecasted total: 18,069,000 credits = 90.3% of 20M
@@ -177,7 +177,6 @@ const SCENARIOS: Scenario[] = [
       { productId: "polaris_trans", runs: 906,  note: "~30/day" },
       { productId: "agent_story",  runs: 150,   note: "~5/day" },
       { productId: "agent_seo",    runs: 3010,  note: "~100/day" },
-      { productId: "agent_trans",  runs: 1504,  note: "~50/day" },
     ],
   },
   {
@@ -196,7 +195,6 @@ const SCENARIOS: Scenario[] = [
       { productId: "polaris_rel",   runs: 60 },
       { productId: "polaris_trans", runs: 60 },
       { productId: "agent_seo",     runs: 120 },
-      { productId: "agent_trans",   runs: 60 },
       { productId: "brandkit_web",  runs: 60,  note: "Ongoing brand updates" },
       { productId: "brandkit_pdf",  runs: 240 },
     ],
@@ -239,7 +237,6 @@ function buildPhrasing(product: Product, value: number, isCapacity: boolean) {
     case "polaris_trans": return `Translate ${p}${valStr} articles into another language.`;
     case "agent_story": return `Research and generate story ideas ${p}${valStr} times.`;
     case "agent_seo": return `Analyze ${p}${valStr} entries and update SEO tags.`;
-    case "agent_trans": return `Translate ${p}${valStr} entries upon workflow stage change.`;
     default: return `${product.action} ${p}${valStr} ${product.summaryUnit || product.unitLabel}.`;
   }
 }
